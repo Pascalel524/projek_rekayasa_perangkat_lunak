@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KantinOnline - Modular & Maintainable Web App</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-full flex flex-col antialiased text-slate-800">
+
+    <!-- TOP NAVIGATION HEADER -->
+    <header class="bg-amber-500 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+            <!-- Brand Logo -->
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="Actions.setRole('student')">
+                <div class="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white text-xl shadow-inner">
+                    <i class="fa-solid fa-utensils"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg sm:text-xl tracking-tight leading-none">KantinOnline</h1>
+                    <p class="text-[11px] text-amber-100 font-medium">Sistem Pemesanan Kampus Cepat</p>
+                </div>
+            </div>
+
+            <!-- Role Switcher & Cart Trigger -->
+            <div class="flex items-center space-x-3">
+                <!-- Role Toggle -->
+                <div class="bg-amber-600/60 p-1 rounded-xl flex items-center text-xs font-semibold backdrop-blur-sm border border-amber-400/30">
+                    <button id="navBtnStudent" onclick="Actions.setRole('student')" class="px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center space-x-1.5 shadow-sm">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                        <span class="hidden sm:inline">Mode</span> <span>Mahasiswa</span>
+                    </button>
+                    <button id="navBtnVendor" onclick="Actions.setRole('vendor')" class="px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center space-x-1.5">
+                        <i class="fa-solid fa-store"></i>
+                        <span class="hidden sm:inline">Mode</span> <span>Penjual</span>
+                    </button>
+                </div>
+
+                <!-- Floating Cart Button (Student view) -->
+                <button id="headerCartBtn" onclick="Actions.toggleCartModal(true)" class="relative bg-slate-900 hover:bg-slate-800 text-white p-2.5 rounded-xl transition-all shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-bag-shopping text-base"></i>
+                    <span id="cartBadgeCount" class="absolute -top-1.5 -right-1.5 bg-rose-500 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border-2 border-amber-500">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT WRAPPER -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+
+        <!-- ======================================================== -->
+        <!-- VIEW: MAHASISWA (STUDENT VIEW)                           -->
+        <!-- ======================================================== -->
+        <section id="viewStudent" class="space-y-6">
+            <!-- Hero Banner -->
+            <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden flex justify-between items-center">
+                <div class="max-w-lg z-10 space-y-2">
+                    <span class="bg-white/20 backdrop-blur-md text-white text-xs px-3 py-1 rounded-full font-semibold inline-block">Bebas Antre di Kantin Kampus</span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Pesan Kebab & Burger Favoritmu!</h2>
+                    <p class="text-xs sm:text-sm text-amber-100">Pantau stok makanan secara real-time dari HP-mu. Makanan siap diambil begitu kamu sampai kantin.</p>
+                </div>
+                <div class="hidden md:block opacity-20 text-white text-9xl absolute -right-6 -bottom-8 pointer-events-none">
+                    <i class="fa-solid fa-burger"></i>
+                </div>
+            </div>
+
+            <!-- Active Orders Tracker Bar -->
+            <div id="studentActiveOrdersSection" class="hidden space-y-3">
+                <h3 class="font-bold text-slate-700 text-sm flex items-center space-x-2">
+                    <span class="relative flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                    </span>
+                    <span>Status Pesanan Aktif Anda</span>
+                </h3>
+                <div id="studentActiveOrdersGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Dynamic Tracker Cards -->
+                </div>
+            </div>
+
+            <!-- Filters & Catalog Header -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+                <!-- Search Box -->
+                <div class="relative w-full sm:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                    <input type="text" id="searchInput" oninput="Actions.setSearchQuery(this.value)" placeholder="Cari kebab, burger, hotdog..." class="w-full pl-9 pr-3 py-2 text-xs bg-slate-100 border border-transparent rounded-xl focus:bg-white focus:border-amber-500 focus:outline-none transition-all">
+                </div>
+
+                <!-- Category Pills -->
+                <div id="categoryPills" class="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 hide-scrollbar">
+                    <!-- Dynamic Category Pills -->
+                </div>
+            </div>
+
+            <!-- Food Catalog Grid -->
+            <div id="studentCatalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                <!-- Dynamic Menu Cards -->
+            </div>
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW: PENJUAL (VENDOR VIEW)                              -->
+        <!-- ======================================================== -->
+        <section id="viewVendor" class="hidden space-y-6">
+            <!-- Vendor Header Banner & Analytics Summary -->
+            <div class="bg-slate-900 text-white rounded-3xl p-6 shadow-md border border-slate-800">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-slate-800">
+                    <div>
+                        <span class="bg-amber-500/20 text-amber-400 text-xs font-semibold px-3 py-1 rounded-full border border-amber-500/30">Panel Vendor Kantin</span>
+                        <h2 class="text-2xl font-extrabold mt-1">Dashboard Pengelolaan Stand</h2>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="Actions.openAddMenuModal()" class="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all flex items-center space-x-1.5">
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Tambah Menu Baru</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analytics Stats Grid -->
+                <div id="vendorStatsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <!-- Stats cards injected dynamically -->
+                </div>
+            </div>
+
+            <!-- Vendor Tabs (Stock Management vs Order Queue) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Stock Management Panel (7 cols) -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                        <div>
+                            <h3 class="font-extrabold text-slate-800 text-base flex items-center space-x-2">
+                                <i class="fa-solid fa-boxes-stacked text-amber-500"></i>
+                                <span>Manajemen Stok & Ketersediaan</span>
+                            </h3>
+                            <p class="text-xs text-slate-500">Atur ketersediaan menu secara langsung untuk pembeli.</p>
+                        </div>
+                        <button onclick="Actions.resetDefaultData()" class="text-xs text-slate-400 hover:text-amber-600 underline font-medium">Reset Data</button>
+                    </div>
+
+                    <div id="vendorStockTable" class="space-y-3">
+                        <!-- Dynamic Stock Items -->
+                    </div>
+                </div>
+
+                <!-- Incoming Orders Queue Panel (5 cols) -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                        <h3 class="font-extrabold text-slate-800 text-base flex items-center space-x-2">
+                            <i class="fa-solid fa-list-check text-amber-500"></i>
+                            <span>Antrean Pesanan Masuk</span>
+                        </h3>
+                        <span id="vendorActiveOrdersBadge" class="bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-0.5 rounded-full">0 Aktif</span>
+                    </div>
+
+                    <div id="vendorOrdersQueue" class="space-y-3">
+                        <!-- Dynamic Vendor Orders Cards -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- SHOPPING CART DRAWER MODAL -->
+    <div id="cartDrawerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity flex justify-end">
+        <div class="bg-white w-full max-w-md h-full flex flex-col shadow-2xl transform transition-transform">
+            <!-- Cart Header -->
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-basket-shopping text-amber-500 text-lg"></i>
+                    <h3 class="font-bold text-slate-800 text-base">Keranjang Pesanan</h3>
+                </div>
+                <button onclick="Actions.toggleCartModal(false)" class="w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Cart Items List -->
+            <div id="cartDrawerItems" class="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                <!-- Cart items rendered here -->
+            </div>
+
+            <!-- Cart Footer Summary -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50 space-y-3">
+                <div class="space-y-1.5 text-xs text-slate-600">
+                    <div class="flex justify-between">
+                        <span>Total Item</span>
+                        <span id="cartDrawerTotalItems" class="font-bold text-slate-800">0 item</span>
+                    </div>
+                    <div class="flex justify-between text-base font-extrabold text-slate-900 pt-1 border-t border-slate-200">
+                        <span>Total Bayar</span>
+                        <span id="cartDrawerTotalPrice" class="text-amber-600">Rp 0</span>
+                    </div>
+                </div>
+
+                <!-- Customer Details Form -->
+                <div class="space-y-2 pt-2 border-t border-slate-200">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Nama Pemesan</label>
+                        <input type="text" id="cartCustomerName" placeholder="Contoh: Budi (A1)" class="w-full text-xs bg-white border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Metode Pembayaran</label>
+                        <select id="cartPaymentMethod" class="w-full text-xs bg-white border border-slate-300 rounded-xl p-2.5 focus:ring-2 focus:ring-amber-500 outline-none">
+                            <option value="Tunai di Kasir">Bayar Tunai di Stand</option>
+                            <option value="QRIS Stand Kantin">QRIS Stand Kantin (Bayar di Tempat)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="btnSubmitCheckout" onclick="Actions.checkout()" disabled class="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-extrabold py-3 rounded-xl transition-all shadow-md flex justify-center items-center space-x-2">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Kirim Pesanan Ke Kantin</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD/EDIT MENU MODAL (VENDOR) -->
+    <div id="addMenuModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 relative">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 id="addMenuModalTitle" class="font-bold text-slate-800 text-base">Tambah Menu Makanan Baru</h3>
+                <button onclick="Actions.closeAddMenuModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="addMenuForm" onsubmit="Actions.saveMenuItem(event)" class="space-y-3">
+                <input type="hidden" id="menuFormId" value="">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Nama Menu</label>
+                    <input type="text" id="menuFormName" required placeholder="Contoh: Kebab Spesial" class="w-full text-xs border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-amber-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Harga (Rp)</label>
+                        <input type="number" id="menuFormPrice" required min="1000" placeholder="15000" class="w-full text-xs border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Stok Awal</label>
+                        <input type="number" id="menuFormStock" required min="0" placeholder="10" class="w-full text-xs border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-amber-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Kategori</label>
+                    <select id="menuFormCategory" class="w-full text-xs border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-amber-500">
+                        <option value="Kebab">Kebab</option>
+                        <option value="Hotdog">Hotdog</option>
+                        <option value="Burger">Burger</option>
+                        <option value="Minuman">Minuman</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Deskripsi Singkat</label>
+                    <textarea id="menuFormDesc" rows="2" placeholder="Komposisi & rasa..." class="w-full text-xs border border-slate-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-amber-500"></textarea>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" onclick="Actions.closeAddMenuModal()" class="px-4 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-5 py-2.5 bg-amber-500 text-white rounded-xl text-xs font-bold hover:bg-amber-600 shadow-sm">Simpan Menu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="fixed top-16 right-4 z-50 space-y-2 pointer-events-none max-w-xs w-full"></div>
+
+    <script>
+        /**
+         * ====================================================================
+         * MODULAR ARCHITECTURE & CENTRALIZED STATE STORE
+         * Highly maintainable structure for future feature expansion.
+         * ====================================================================
+         */
+
+        // 1. DEFAULT DATA CONFIGURATION
+        const DEFAULT_MENUS = [
+            { id: 1, name: "Kebab 1 (Kebab Original)", price: 12000, desc: "Kebab daging sapi gurih dengan saus keju & saus spesial", category: "Kebab", stock: 15, isAvailable: true, image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&q=80" },
+            { id: 2, name: "Kebab 2 (Kebab Keju Melt)", price: 15000, desc: "Kebab isi sapi panggang dengan limpahan keju mozarella meleleh", category: "Kebab", stock: 10, isAvailable: true, image: "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&q=80" },
+            { id: 3, name: "Kebab 3 (Kebab Double Beef)", price: 18000, desc: "Porsi ekstra double patty sapi, selada segar & mayones", category: "Kebab", stock: 8, isAvailable: true, image: "https://images.unsplash.com/photo-1561651823-34feb02250e4?w=400&q=80" },
+            { id: 4, name: "Kebab 4 (Kebab Telur & Keju)", price: 16000, desc: "Kombinasi isi telur dadar rempah, keju cheddar & daging sapi", category: "Kebab", stock: 5, isAvailable: true, image: "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=400&q=80" },
+            { id: 5, name: "Kebab 5 (Kebab Jumbo Special)", price: 22000, desc: "Ukuran jumbo komplit: Sapi, Telur, Keju Melt, & Daging Asap", category: "Kebab", stock: 3, isAvailable: true, image: "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=400&q=80" },
+            { id: 6, name: "Hotdog Classic", price: 14000, desc: "Roti lembut panjang dengan sosis sapi jumbo, mustard & relish", category: "Hotdog", stock: 12, isAvailable: true, image: "https://images.unsplash.com/photo-1619740455993-9e612b1af08a?w=400&q=80" },
+            { id: 7, name: "Burger Cheese Delight", price: 16000, desc: "Burger daging sapi homemade, keju melt, acar & saus istimewa", category: "Burger", stock: 7, isAvailable: true, image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80" }
+        ];
+
+        // 2. CENTRAL STATE STORE
+        class CentralStore {
+            constructor() {
+                this.state = {
+                    role: 'student', // 'student' | 'vendor'
+                    menuItems: JSON.parse(localStorage.getItem('kantin_menu_v2')) || DEFAULT_MENUS,
+                    orders: JSON.parse(localStorage.getItem('kantin_orders_v2')) || [
+                        {
+                            id: "ORD-101",
+                            customerName: "Mahasiswa #101",
+                            items: [{ id: 2, name: "Kebab 2 (Kebab Keju Melt)", qty: 2, price: 15000 }],
+                            totalPrice: 30000,
+                            paymentMethod: "Tunai di Kasir",
+                            status: "Diproses", // 'Diterima' -> 'Diproses' -> 'Siap Diambil' -> 'Selesai'
+                            timestamp: "10:15 WIB"
+                        }
+                    ],
+                    cart: [], // [{ id, qty }]
+                    activeCategory: "Semua",
+                    searchQuery: "",
+                    isCartOpen: false
+                };
+                this.listeners = [];
+            }
+
+            getState() {
+                return this.state;
+            }
+
+            setState(partialState) {
+                this.state = { ...this.state, ...partialState };
+                this.persist();
+                this.notify();
+            }
+
+            subscribe(listener) {
+                this.listeners.push(listener);
+            }
+
+            notify() {
+                this.listeners.forEach(fn => fn(this.state));
+            }
+
+            persist() {
+                localStorage.setItem('kantin_menu_v2', JSON.stringify(this.state.menuItems));
+                localStorage.setItem('kantin_orders_v2', JSON.stringify(this.state.orders));
+            }
+        }
+
+        const store = new CentralStore();
+
+        /**
+         * ====================================================================
+         * ACTION CREATORS / CONTROLLERS
+         * All mutations & business logic pass through here.
+         * ====================================================================
+         */
+        const Actions = {
+            setRole(role) {
+                store.setState({ role });
+                showToast(`Beralih ke Mode ${role === 'student' ? 'Mahasiswa' : 'Penjual'}`);
+            },
+
+            setCategory(category) {
+                store.setState({ activeCategory: category });
+            },
+
+            setSearchQuery(query) {
+                store.setState({ searchQuery: query });
+            },
+
+            toggleCartModal(isOpen) {
+                store.setState({ isCartOpen: isOpen });
+            },
+
+            addToCart(menuId) {
+                const { menuItems, cart } = store.getState();
+                const item = menuItems.find(m => m.id === menuId);
+
+                if (!item || !item.isAvailable || item.stock <= 0) {
+                    showToast("Maaf, stok item ini sedang habis!", "error");
+                    return;
+                }
+
+                const cartIndex = cart.findIndex(c => c.id === menuId);
+                let updatedCart = [...cart];
+
+                if (cartIndex > -1) {
+                    if (updatedCart[cartIndex].qty >= item.stock) {
+                        showToast(`Stok terbatas! Hanya sisa ${item.stock}`, "error");
+                        return;
+                    }
+                    updatedCart[cartIndex].qty += 1;
+                } else {
+                    updatedCart.push({ id: menuId, qty: 1 });
+                }
+
+                store.setState({ cart: updatedCart });
+                showToast(`+ ${item.name} ke keranjang`);
+            },
+
+            updateCartQty(menuId, delta) {
+                const { menuItems, cart } = store.getState();
+                const item = menuItems.find(m => m.id === menuId);
+                let updatedCart = [];
+
+                cart.forEach(c => {
+                    if (c.id === menuId) {
+                        const newQty = c.qty + delta;
+                        if (newQty > item.stock) {
+                            showToast(`Batas stok tersedia: ${item.stock}`, "error");
+                            updatedCart.push(c);
+                        } else if (newQty > 0) {
+                            updatedCart.push({ ...c, qty: newQty });
+                        }
+                    } else {
+                        updatedCart.push(c);
+                    }
+                });
+
+                store.setState({ cart: updatedCart });
+            },
+
+            checkout() {
+                const { cart, menuItems, orders } = store.getState();
+                const customerNameInput = document.getElementById('cartCustomerName').value.trim();
+                const paymentMethod = document.getElementById('cartPaymentMethod').value;
+
+                if (cart.length === 0) return;
+
+                const customerName = customerNameInput || `Mahasiswa #${Math.floor(100 + Math.random() * 900)}`;
+
+                // Deduct stock
+                let orderItems = [];
+                let totalPrice = 0;
+
+                const updatedMenuItems = menuItems.map(item => {
+                    const cartItem = cart.find(c => c.id === item.id);
+                    if (cartItem) {
+                        const newStock = Math.max(0, item.stock - cartItem.qty);
+                        orderItems.push({
+                            id: item.id,
+                            name: item.name,
+                            qty: cartItem.qty,
+                            price: item.price
+                        });
+                        totalPrice += item.price * cartItem.qty;
+
+                        return {
+                            ...item,
+                            stock: newStock,
+                            isAvailable: newStock > 0
+                        };
+                    }
+                    return item;
+                });
+
+                const newOrder = {
+                    id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
+                    customerName,
+                    items: orderItems,
+                    totalPrice,
+                    paymentMethod,
+                    status: "Diterima",
+                    timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + " WIB"
+                };
+
+                store.setState({
+                    menuItems: updatedMenuItems,
+                    orders: [newOrder, ...orders],
+                    cart: [],
+                    isCartOpen: false
+                });
+
+                showToast("Pesanan Anda berhasil terkirim ke Kantin!");
+            },
+
+            // Vendor Stock Actions
+            updateStock(menuId, delta) {
+                const { menuItems } = store.getState();
+                const updated = menuItems.map(m => {
+                    if (m.id === menuId) {
+                        const newStock = Math.max(0, m.stock + delta);
+                        return { ...m, stock: newStock, isAvailable: newStock > 0 };
+                    }
+                    return m;
+                });
+                store.setState({ menuItems: updated });
+            },
+
+            toggleAvailability(menuId) {
+                const { menuItems } = store.getState();
+                const updated = menuItems.map(m => {
+                    if (m.id === menuId) {
+                        const isAvailable = !m.isAvailable;
+                        const stock = isAvailable && m.stock === 0 ? 5 : m.stock;
+                        return { ...m, isAvailable, stock };
+                    }
+                    return m;
+                });
+                store.setState({ menuItems: updated });
+            },
+
+            // Vendor Order Status Actions
+            updateOrderStatus(orderId, nextStatus) {
+                const { orders } = store.getState();
+                const updated = orders.map(o => o.id === orderId ? { ...o, status: nextStatus } : o);
+                store.setState({ orders: updated });
+                showToast(`Status pesanan ${orderId} diubah ke "${nextStatus}"`);
+            },
+
+            // Vendor Add/Edit Menu Modal
+            openAddMenuModal() {
+                document.getElementById('addMenuModal').classList.remove('hidden');
+            },
+
+            closeAddMenuModal() {
+                document.getElementById('addMenuModal').classList.add('hidden');
+                document.getElementById('addMenuForm').reset();
+            },
+
+            saveMenuItem(event) {
+                event.preventDefault();
+                const { menuItems } = store.getState();
+
+                const name = document.getElementById('menuFormName').value;
+                const price = parseInt(document.getElementById('menuFormPrice').value) || 0;
+                const stock = parseInt(document.getElementById('menuFormStock').value) || 0;
+                const category = document.getElementById('menuFormCategory').value;
+                const desc = document.getElementById('menuFormDesc').value;
+
+                const newItem = {
+                    id: Date.now(),
+                    name,
+                    price,
+                    stock,
+                    category,
+                    desc: desc || "Menu makanan enak di kantin kampus.",
+                    isAvailable: stock > 0,
+                    image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&q=80"
+                };
+
+                store.setState({ menuItems: [newItem, ...menuItems] });
+                Actions.closeAddMenuModal();
+                showToast("Menu baru berhasil ditambahkan!");
+            },
+
+            resetDefaultData() {
+                store.setState({
+                    menuItems: DEFAULT_MENUS,
+                    orders: []
+                });
+                showToast("Data dikembalikan ke default.");
+            }
+        };
+
+        /**
+         * ====================================================================
+         * UTILS & HELPERS
+         * ====================================================================
+         */
+        function formatRp(num) {
+            return 'Rp ' + num.toLocaleString('id-ID');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-rose-600' : 'bg-slate-900';
+
+            toast.className = `${bgClass} text-white text-xs px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 transform translate-y-3 opacity-0 flex items-center space-x-2 pointer-events-auto border border-white/10`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-xmark text-rose-300' : 'fa-circle-check text-emerald-400'} text-base"></i> <span class="font-medium">${message}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-3', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /**
+         * ====================================================================
+         * UI RENDERERS (REACTIVE COMPONENTS)
+         * Each renderer is clean, independent, and updates based on State.
+         * ====================================================================
+         */
+
+        // Render Navbar Buttons State
+        function renderHeaderUI(state) {
+            const btnStudent = document.getElementById('navBtnStudent');
+            const btnVendor = document.getElementById('navBtnVendor');
+            const cartBtn = document.getElementById('headerCartBtn');
+
+            if (state.role === 'student') {
+                btnStudent.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-amber-800 shadow-sm font-bold flex items-center space-x-1.5";
+                btnVendor.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-amber-100 hover:text-white flex items-center space-x-1.5";
+                cartBtn.classList.remove('hidden');
+            } else {
+                btnVendor.className = "px-3 py-1.5 rounded-lg transition-all duration-200 bg-white text-amber-800 shadow-sm font-bold flex items-center space-x-1.5";
+                btnStudent.className = "px-3 py-1.5 rounded-lg transition-all duration-200 text-amber-100 hover:text-white flex items-center space-x-1.5";
+                cartBtn.classList.add('hidden');
+            }
+
+            // Total items in cart badge
+            const totalCartItems = state.cart.reduce((sum, c) => sum + c.qty, 0);
+            document.getElementById('cartBadgeCount').innerText = totalCartItems;
+        }
+
+        // Render Student View (Catalog, Categories, Active Orders Tracker)
+        function renderStudentView(state) {
+            const { menuItems, cart, orders, activeCategory, searchQuery } = state;
+
+            // 1. Render Category Pills
+            const categories = ["Semua", ...new Set(menuItems.map(m => m.category))];
+            const catContainer = document.getElementById('categoryPills');
+            catContainer.innerHTML = categories.map(cat => `
+                <button onclick="Actions.setCategory('${cat}')" class="px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                    activeCategory === cat 
+                        ? 'bg-amber-500 text-white shadow-sm' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }">
+                    ${cat}
+                </button>
+            `).join('');
+
+            // 2. Filter Menu Items
+            const filteredMenus = menuItems.filter(item => {
+                const matchCat = activeCategory === "Semua" || item.category === activeCategory;
+                const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                    item.desc.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchCat && matchSearch;
+            });
+
+            // 3. Render Catalog Cards
+            const catalogGrid = document.getElementById('studentCatalogGrid');
+            if (filteredMenus.length === 0) {
+                catalogGrid.innerHTML = `
+                    <div class="col-span-full text-center py-12 text-slate-400 space-y-2">
+                        <i class="fa-solid fa-utensils text-4xl mb-2"></i>
+                        <p class="text-sm font-semibold">Tidak ada menu yang sesuai pencarian.</p>
+                    </div>
+                `;
+            } else {
+                catalogGrid.innerHTML = filteredMenus.map(item => {
+                    const cartItem = cart.find(c => c.id === item.id);
+                    const qtyInCart = cartItem ? cartItem.qty : 0;
+                    const isOutOfStock = !item.isAvailable || item.stock <= 0;
+                    const isLowStock = item.stock > 0 && item.stock <= 3;
+
+                    let stockBadge = `<span class="bg-emerald-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">Tersedia: ${item.stock}</span>`;
+                    if (isOutOfStock) {
+                        stockBadge = `<span class="bg-rose-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm">Habis</span>`;
+                    } else if (isLowStock) {
+                        stockBadge = `<span class="bg-amber-500 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-sm animate-pulse">Sisa ${item.stock}!</span>`;
+                    }
+
+                    return `
+                        <div class="bg-white rounded-3xl border border-slate-200/80 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between ${isOutOfStock ? 'opacity-80' : ''}">
+                            <div>
+                                <div class="relative h-40 bg-slate-100 overflow-hidden">
+                                    <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover ${isOutOfStock ? 'grayscale' : ''}">
+                                    <div class="absolute top-3 right-3">${stockBadge}</div>
+                                    <span class="absolute bottom-3 left-3 bg-slate-900/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md">${item.category}</span>
+                                </div>
+                                <div class="p-4 space-y-1.5">
+                                    <h4 class="font-bold text-slate-900 text-sm leading-snug">${item.name}</h4>
+                                    <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed">${item.desc}</p>
+                                    <p class="font-black text-amber-600 text-base pt-1">${formatRp(item.price)}</p>
+                                </div>
+                            </div>
+
+                            <div class="p-4 pt-0">
+                                ${isOutOfStock 
+                                    ? `<button disabled class="w-full bg-slate-100 text-slate-400 text-xs font-bold py-2.5 rounded-2xl cursor-not-allowed">Stok Habis</button>`
+                                    : qtyInCart > 0 
+                                        ? `<div class="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-2xl p-1">
+                                            <button onclick="Actions.updateCartQty(${item.id}, -1)" class="w-8 h-8 bg-white text-amber-800 rounded-xl shadow-sm font-extrabold hover:bg-amber-100 flex items-center justify-center">-</button>
+                                            <span class="font-extrabold text-amber-900 text-xs">${qtyInCart} di keranjang</span>
+                                            <button onclick="Actions.updateCartQty(${item.id}, 1)" class="w-8 h-8 bg-amber-500 text-white rounded-xl shadow-sm font-extrabold hover:bg-amber-600 flex items-center justify-center">+</button>
+                                           </div>`
+                                        : `<button onclick="Actions.addToCart(${item.id})" class="w-full bg-slate-900 hover:bg-amber-500 text-white text-xs font-bold py-2.5 rounded-2xl transition-all shadow-sm flex justify-center items-center space-x-2">
+                                            <i class="fa-solid fa-plus text-[10px]"></i>
+                                            <span>Tambah Ke Keranjang</span>
+                                           </button>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 4. Render Active Orders Tracker
+            const activeOrders = orders.filter(o => o.status !== 'Selesai');
+            const activeOrdersSection = document.getElementById('studentActiveOrdersSection');
+            const activeOrdersGrid = document.getElementById('studentActiveOrdersGrid');
+
+            if (activeOrders.length === 0) {
+                activeOrdersSection.classList.add('hidden');
+            } else {
+                activeOrdersSection.classList.remove('hidden');
+                activeOrdersGrid.innerHTML = activeOrders.map(ord => {
+                    let statusBadge = '';
+                    if (ord.status === 'Diterima') {
+                        statusBadge = `<span class="bg-blue-100 text-blue-800 text-[10px] font-bold px-2.5 py-1 rounded-full">Diterima Vendor</span>`;
+                    } else if (ord.status === 'Diproses') {
+                        statusBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center space-x-1"><i class="fa-solid fa-fire animate-bounce"></i><span>Dimasak</span></span>`;
+                    } else if (ord.status === 'Siap Diambil') {
+                        statusBadge = `<span class="bg-emerald-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full animate-pulse">SIAP DIAMBIL!</span>`;
+                    }
+
+                    const itemsList = ord.items.map(i => `${i.name} (${i.qty})`).join(', ');
+
+                    return `
+                        <div class="bg-white border-2 border-amber-400 p-4 rounded-2xl shadow-sm space-y-2">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="font-extrabold text-xs text-slate-800">${ord.id}</span>
+                                    <p class="text-[10px] text-slate-400">${ord.timestamp} • ${ord.paymentMethod}</p>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            <p class="text-xs text-slate-600 line-clamp-1"><strong>Menu:</strong> ${itemsList}</p>
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+                                <span class="text-xs font-black text-amber-600">${formatRp(ord.totalPrice)}</span>
+                                ${ord.status === 'Siap Diambil'
+                                    ? `<button onclick="Actions.updateOrderStatus('${ord.id}', 'Selesai')" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg font-bold">Ambil Pesanan</button>`
+                                    : `<span class="text-[11px] text-slate-400 italic">Harap tunggu dipanggil...</span>`
+                                }
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Render Cart Drawer
+        function renderCartModalUI(state) {
+            const modal = document.getElementById('cartDrawerModal');
+            if (state.isCartOpen) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+
+            const { cart, menuItems } = state;
+            const container = document.getElementById('cartDrawerItems');
+            const totalItemsEl = document.getElementById('cartDrawerTotalItems');
+            const totalPriceEl = document.getElementById('cartDrawerTotalPrice');
+            const checkoutBtn = document.getElementById('btnSubmitCheckout');
+
+            if (cart.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400 space-y-2">
+                        <i class="fa-solid fa-basket-shopping text-4xl mb-2 text-slate-300"></i>
+                        <p class="text-xs font-semibold">Keranjang Anda masih kosong</p>
+                    </div>
+                `;
+                totalItemsEl.innerText = "0 item";
+                totalPriceEl.innerText = "Rp 0";
+                checkoutBtn.disabled = true;
+                return;
+            }
+
+            let totalQty = 0;
+            let totalPrice = 0;
+
+            container.innerHTML = cart.map(c => {
+                const item = menuItems.find(m => m.id === c.id);
+                if (!item) return '';
+                const subtotal = item.price * c.qty;
+                totalQty += c.qty;
+                totalPrice += subtotal;
+
+                return `
+                    <div class="flex justify-between items-center text-xs bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <div class="space-y-0.5">
+                            <p class="font-bold text-slate-800">${item.name}</p>
+                            <p class="text-slate-500">${formatRp(item.price)} x ${c.qty}</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-extrabold text-slate-900">${formatRp(subtotal)}</span>
+                            <button onclick="Actions.updateCartQty(${item.id}, -1)" class="text-rose-500 hover:text-rose-700 p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            totalItemsEl.innerText = `${totalQty} item`;
+            totalPriceEl.innerText = formatRp(totalPrice);
+            checkoutBtn.disabled = false;
+        }
+
+        // Render Vendor View
+        function renderVendorView(state) {
+            const { menuItems, orders } = state;
+
+            // 1. Vendor Stats
+            const totalRevenue = orders.filter(o => o.status === 'Selesai').reduce((sum, o) => sum + o.totalPrice, 0);
+            const activeOrdersCount = orders.filter(o => o.status !== 'Selesai').length;
+            const completedCount = orders.filter(o => o.status === 'Selesai').length;
+
+            document.getElementById('vendorStatsGrid').innerHTML = `
+                <div class="bg-slate-800/80 border border-slate-700/50 p-3.5 rounded-2xl space-y-1">
+                    <p class="text-[11px] text-slate-400 font-medium">Total Pendapatan</p>
+                    <p class="text-lg font-black text-emerald-400">${formatRp(totalRevenue)}</p>
+                </div>
+                <div class="bg-slate-800/80 border border-slate-700/50 p-3.5 rounded-2xl space-y-1">
+                    <p class="text-[11px] text-slate-400 font-medium">Pesanan Aktif</p>
+                    <p class="text-lg font-black text-amber-400">${activeOrdersCount} Order</p>
+                </div>
+                <div class="bg-slate-800/80 border border-slate-700/50 p-3.5 rounded-2xl space-y-1">
+                    <p class="text-[11px] text-slate-400 font-medium">Selesai Hari Ini</p>
+                    <p class="text-lg font-black text-blue-400">${completedCount} Transaksi</p>
+                </div>
+                <div class="bg-slate-800/80 border border-slate-700/50 p-3.5 rounded-2xl space-y-1">
+                    <p class="text-[11px] text-slate-400 font-medium">Total Jenis Menu</p>
+                    <p class="text-lg font-black text-slate-200">${menuItems.length} Item</p>
+                </div>
+            `;
+
+            // 2. Render Stock Table
+            const stockTable = document.getElementById('vendorStockTable');
+            stockTable.innerHTML = menuItems.map(item => `
+                <div class="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="flex items-center space-x-3">
+                        <img src="${item.image}" alt="${item.name}" class="w-12 h-12 rounded-xl object-cover">
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-xs sm:text-sm">${item.name}</h4>
+                            <p class="text-xs font-semibold text-amber-600">${formatRp(item.price)}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between w-full sm:w-auto space-x-4 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                        <div class="flex items-center space-x-1.5">
+                            <span class="text-[11px] text-slate-400 font-medium">Stok:</span>
+                            <div class="flex items-center border border-slate-200 rounded-xl bg-slate-50">
+                                <button onclick="Actions.updateStock(${item.id}, -1)" class="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200 font-extrabold rounded-l-xl">-</button>
+                                <span class="px-2.5 text-xs font-extrabold text-slate-800">${item.stock}</span>
+                                <button onclick="Actions.updateStock(${item.id}, 1)" class="px-2.5 py-1 text-xs text-slate-600 hover:bg-slate-200 font-extrabold rounded-r-xl">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Availability Switch -->
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" ${item.isAvailable && item.stock > 0 ? 'checked' : ''} onchange="Actions.toggleAvailability(${item.id})" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                            <span class="ml-2 text-[11px] font-bold ${item.isAvailable && item.stock > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                                ${item.isAvailable && item.stock > 0 ? 'Ada' : 'Habis'}
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            `).join('');
+
+            // 3. Render Orders Queue
+            const ordersQueue = document.getElementById('vendorOrdersQueue');
+            document.getElementById('vendorActiveOrdersBadge').innerText = `${activeOrdersCount} Aktif`;
+
+            if (orders.length === 0) {
+                ordersQueue.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Belum ada pesanan masuk</div>`;
+            } else {
+                ordersQueue.innerHTML = orders.map(ord => {
+                    const isCompleted = ord.status === 'Selesai';
+                    const itemsText = ord.items.map(i => `<li class="flex justify-between"><span>${i.name} x${i.qty}</span> <span>${formatRp(i.price * i.qty)}</span></li>`).join('');
+
+                    return `
+                        <div class="bg-white p-4 rounded-2xl border ${isCompleted ? 'border-slate-100 opacity-60' : 'border-amber-300 shadow-sm'} space-y-3">
+                            <div class="flex justify-between items-start border-b border-slate-100 pb-2">
+                                <div>
+                                    <span class="font-extrabold text-sm text-slate-800">${ord.id}</span>
+                                    <p class="text-[11px] text-slate-500">${ord.customerName} • ${ord.timestamp}</p>
+                                </div>
+                                <span class="text-[10px] px-2.5 py-1 rounded-full font-extrabold ${
+                                    ord.status === 'Diterima' ? 'bg-blue-100 text-blue-800' :
+                                    ord.status === 'Diproses' ? 'bg-amber-100 text-amber-800' :
+                                    ord.status === 'Siap Diambil' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                                }">${ord.status}</span>
+                            </div>
+
+                            <ul class="text-xs text-slate-600 space-y-1">
+                                ${itemsText}
+                            </ul>
+
+                            <div class="flex justify-between items-center text-xs font-bold pt-2 border-t border-slate-100">
+                                <span>Total Bayar (${ord.paymentMethod}):</span>
+                                <span class="text-amber-600 text-sm font-black">${formatRp(ord.totalPrice)}</span>
+                            </div>
+
+                            ${!isCompleted ? `
+                                <div class="pt-1">
+                                    ${ord.status === 'Diterima' ? `
+                                        <button onclick="Actions.updateOrderStatus('${ord.id}', 'Diproses')" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 rounded-xl text-xs shadow-sm">
+                                            <i class="fa-solid fa-fire mr-1"></i> Mulai Dimasak
+                                        </button>
+                                    ` : ''}
+
+                                    ${ord.status === 'Diproses' ? `
+                                        <button onclick="Actions.updateOrderStatus('${ord.id}', 'Siap Diambil')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs shadow-sm">
+                                            <i class="fa-solid fa-bell mr-1"></i> Tandai Siap Diambil
+                                        </button>
+                                    ` : ''}
+
+                                    ${ord.status === 'Siap Diambil' ? `
+                                        <button onclick="Actions.updateOrderStatus('${ord.id}', 'Selesai')" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2 rounded-xl text-xs shadow-sm">
+                                            <i class="fa-solid fa-circle-check mr-1"></i> Transaksi Selesai
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Master View Switcher based on State
+        function renderApp(state) {
+            renderHeaderUI(state);
+
+            const viewStudent = document.getElementById('viewStudent');
+            const viewVendor = document.getElementById('viewVendor');
+
+            if (state.role === 'student') {
+                viewStudent.classList.remove('hidden');
+                viewVendor.classList.add('hidden');
+                renderStudentView(state);
+                renderCartModalUI(state);
+            } else {
+                viewVendor.classList.remove('hidden');
+                viewStudent.classList.add('hidden');
+                renderVendorView(state);
+            }
+        }
+
+        // Subscribe Render Functions to Central Store Updates
+        store.subscribe(renderApp);
+
+        // App Initialization
+        window.onload = function() {
+            renderApp(store.getState());
+        };
+    </script>
+</body>
+</html>

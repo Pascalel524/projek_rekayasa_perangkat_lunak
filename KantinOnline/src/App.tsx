@@ -23,18 +23,58 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('Semua');
   const [cartCount, setCartCount] = useState(0);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
 
-  const categories = ['Semua', ...Array.from(new Set(stores.map((store) => store.category)))];
-  const filteredStores = useMemo(() => stores.filter((store) => {
-    const matchesQuery = `${store.name} ${store.category} ${store.description}`.toLowerCase().includes(query.toLowerCase());
-    return matchesQuery && (category === 'Semua' || store.category === category);
-  }), [query, category]);
+  const categories = ['Semua', ...Array.from(new Set(stores.map((s) => s.category)))];
+  const filteredStores = useMemo(
+    () =>
+      stores.filter((store) => {
+        const matchesQuery = `${store.name} ${store.category} ${store.description}`
+          .toLowerCase()
+          .includes(query.toLowerCase());
+        return matchesQuery && (category === 'Semua' || store.category === category);
+      }),
+    [query, category]
+  );
+
+  if (selectedStore) {
+    return (
+      <div className="app-shell">
+        <header className="topbar">
+          <div className="brand"><span className="brand-mark">K</span><span>KantinOnline</span></div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button onClick={() => setSelectedStore(null)} style={{ padding: '8px 12px', borderRadius: 8 }}>↩ Kembali</button>
+            <button className="cart-button">🛒 Keranjang ({cartCount})</button>
+          </div>
+        </header>
+
+        <main className="container">
+          <article style={{ background: 'white', borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+              <div style={{ fontSize: 72 }}>{selectedStore.emoji}</div>
+              <div>
+                <h2 style={{ margin: 0 }}>{selectedStore.name}</h2>
+                <div style={{ color: '#64748b', marginTop: 6 }}>{selectedStore.category} · ★ {selectedStore.rating}</div>
+                <p style={{ marginTop: 12 }}>{selectedStore.description}</p>
+                <div style={{ marginTop: 18 }}><strong>Perkiraan:</strong> {selectedStore.estimate}</div>
+              </div>
+            </div>
+
+            <section style={{ marginTop: 24 }}>
+              <h3>Daftar menu (contoh)</h3>
+              <p>Di sini nanti tampilkan daftar produk untuk toko <strong>{selectedStore.name}</strong>.</p>
+            </section>
+          </article>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="brand"><span className="brand-mark">K</span><span>KantinOnline</span></div>
-        <button className="cart-button" onClick={() => setCartCount((count) => count + 1)}>🛒 Keranjang ({cartCount})</button>
+        <button className="cart-button" onClick={() => setCartCount((c) => c + 1)}>🛒 Keranjang ({cartCount})</button>
       </header>
 
       <main className="container">
@@ -58,13 +98,21 @@ export default function App() {
 
         <section className="store-grid">
           {filteredStores.map((store) => (
-            <article className="store-card" key={store.id}>
+            <article
+              className="store-card"
+              key={store.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => setSelectedStore(store)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedStore(store); }}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="store-image">{store.emoji}<span className="open-label">Buka</span></div>
               <div className="store-content">
                 <div className="card-meta"><span>{store.category}</span><strong>★ {store.rating}</strong></div>
                 <h3>{store.name}</h3>
                 <p>{store.description}</p>
-                <div className="card-footer"><span>⏱ {store.estimate}</span><button onClick={() => setCartCount((count) => count + 1)}>Tambah</button></div>
+                <div className="card-footer"><span>⏱ {store.estimate}</span></div>
               </div>
             </article>
           ))}

@@ -1,0 +1,27 @@
+* { box-sizing: border-box; }
+:root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172033; background: #f8fafc; }
+body { margin: 0; min-width: 320px; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+.topbar { height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(20px, calc((100% - 1180px) / 2)); background: #ea580c; color: white; box-shadow: 0 3px 12px #c2410c55; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800; }
+.brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: #ea580c; background: white; }
+.cart-button { border: 1px solid #fb923c; border-radius: 10px; padding: 10px 14px; background: #c2410c; color: white; }
+.container { width: min(1180px, calc(100% - 32px)); margin: 28px auto 60px; }
+.hero { display: flex; justify-content: space-between; align-items: center; min-height: 220px; padding: 38px 44px; border-radius: 24px; color: white; background: linear-gradient(115deg, #f97316, #d97706); box-shadow: 0 12px 30px #f9731633; }
+.eyebrow { margin: 0 0 12px; color: #ffedd5; font-size: 12px; font-weight: 800; letter-spacing: .12em; }
+h1 { margin: 0; max-width: 650px; font-size: clamp(30px, 5vw, 52px); line-height: 1.05; }
+.hero-copy { max-width: 600px; margin: 16px 0 0; color: #ffedd5; font-size: 17px; }
+.hero-emoji { font-size: 110px; filter: drop-shadow(0 12px 8px #7c2d1266); }
+.toolbar { display: flex; gap: 12px; margin: 22px 0; padding: 14px; border: 1px solid #e2e8f0; border-radius: 16px; background: white; }
+.toolbar input, .toolbar select { min-height: 44px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 14px; color: #334155; background: white; }
+.toolbar input { flex: 1; }
+.section-heading { display: flex; justify-content: space-between; align-items: center; margin: 24px 0 14px; }
+h2 { margin: 0; font-size: 26px; } .section-heading p { margin: 4px 0 0; color: #64748b; } .status { color: #15803d; font-size: 14px; font-weight: 700; }
+.store-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.store-card { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 18px; background: white; box-shadow: 0 5px 16px #0f172a0b; transition: transform .2s, box-shadow .2s; }
+.store-card:hover { transform: translateY(-3px); box-shadow: 0 12px 25px #0f172a18; }
+.store-image { position: relative; display: grid; place-items: center; height: 145px; font-size: 72px; background: linear-gradient(135deg, #ffedd5, #fed7aa); }
+.open-label { position: absolute; top: 12px; right: 12px; padding: 5px 9px; border-radius: 20px; color: #166534; background: #dcfce7; font-size: 12px; font-weight: 700; }
+.store-content { padding: 16px; }.card-meta, .card-footer { display: flex; justify-content: space-between; align-items: center; }.card-meta { color: #ea580c; font-size: 12px; font-weight: 700; }.card-meta strong { color: #b45309; }.store-content h3 { margin: 9px 0 7px; font-size: 18px; }.store-content p { min-height: 42px; margin: 0 0 16px; color: #64748b; font-size: 14px; line-height: 1.45; }.card-footer { color: #64748b; font-size: 13px; }.card-footer button { border: 0; border-radius: 8px; padding: 8px 12px; color: white; background: #ea580c; font-weight: 700; }.empty-state { padding: 40px; text-align: center; color: #64748b; }
+@media (max-width: 600px) { .topbar { padding: 0 16px; } .brand { font-size: 18px; } .cart-button { padding: 8px 10px; font-size: 13px; } .container { width: min(100% - 20px, 1180px); margin-top: 16px; } .hero { min-height: 190px; padding: 26px; } .hero-emoji { display: none; } .toolbar { flex-direction: column; } }

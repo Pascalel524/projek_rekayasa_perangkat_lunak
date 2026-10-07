@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 
 type Store = {
-  id: number;
+  id: string;
   name: string;
   category: string;
   rating: number;
@@ -10,115 +10,248 @@ type Store = {
   description: string;
 };
 
-const stores: Store[] = [
-  { id: 1, name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus khas.' },
-  { id: 2, name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
-  { id: 3, name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
-  { id: 4, name: 'Dapur Ricebox & Bento', category: 'Ayam & Nasi', rating: 4.6, estimate: '10–15 menit', emoji: '🍱', description: 'Ricebox hangat dengan pilihan topping favorit.' },
-  { id: 5, name: 'Jus Buah Segar Kampus', category: 'Minuman & Snack', rating: 4.9, estimate: '5–8 menit', emoji: '🥤', description: 'Jus buah segar tanpa pemanis buatan.' },
-  { id: 6, name: 'Bakso & Mie Ayam Pak Kumis', category: 'Mie & Bakso', rating: 4.7, estimate: '15–20 menit', emoji: '🍜', description: 'Bakso urat dan mie ayam dengan kuah kaldu gurih.' },
+type Product = {
+  id: string;
+  storeId: string;
+  name: string;
+  price: number;
+  description?: string;
+};
+
+type CartItem = {
+  productId: string;
+  productName: string;
+  storeId: string;
+  storeName: string;
+  unitPrice: number;
+  qty: number;
+};
+
+const STORES: Store[] = [
+  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus khas.' },
+  { id: 'store-2', name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
+  { id: 'store-3', name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
+  { id: 'store-4', name: 'Dapur Ricebox & Bento', category: 'Ayam & Nasi', rating: 4.6, estimate: '10–15 menit', emoji: '🍱', description: 'Ricebox hangat dengan pilihan topping favorit.' },
+  { id: 'store-5', name: 'Jus Buah Segar Kampus', category: 'Minuman & Snack', rating: 4.9, estimate: '5–8 menit', emoji: '🥤', description: 'Jus buah segar tanpa pemanis buatan.' },
+  { id: 'store-6', name: 'Bakso & Mie Ayam Pak Kumis', category: 'Mie & Bakso', rating: 4.7, estimate: '15–20 menit', emoji: '🍜', description: 'Bakso urat dan mie ayam dengan kuah kaldu gurih.' },
+];
+
+const PRODUCTS: Product[] = [
+  // store-1 products
+  { id: 'p-1', storeId: 'store-1', name: 'Kebab Original Beef (Large)', price: 15000, description: 'Kebab daging sapi panggang' },
+  { id: 'p-2', storeId: 'store-1', name: 'Kebab Keju Mozzarella', price: 18000 },
+  { id: 'p-3', storeId: 'store-1', name: 'Double Beef Burger', price: 22000 },
+
+  // store-2 products
+  { id: 'p-4', storeId: 'store-2', name: 'Nasi Ayam Geprek Sambal Korek', price: 15000 },
+  { id: 'p-5', storeId: 'store-2', name: 'Nasi Ayam Geprek Keju Melt', price: 19000 },
+
+  // store-3 products
+  { id: 'p-6', storeId: 'store-3', name: 'Es Kopi Susu Aren', price: 12000 },
+  { id: 'p-7', storeId: 'store-3', name: 'Roti Bakar Cokelat Keju', price: 10000 },
+
+  // store-4 products
+  { id: 'p-8', storeId: 'store-4', name: 'Ricebox Chicken Teriyaki', price: 25000 },
+  { id: 'p-9', storeId: 'store-4', name: 'Ricebox Beef Blackpepper', price: 27000 },
+
+  // store-5 products
+  { id: 'p-10', storeId: 'store-5', name: 'Jus Alpukat Kocok', price: 12000 },
+  { id: 'p-11', storeId: 'store-5', name: 'Es Buah Spesial', price: 15000 },
+
+  // store-6 products
+  { id: 'p-12', storeId: 'store-6', name: 'Bakso Urat Jumbo', price: 18000 },
+  { id: 'p-13', storeId: 'store-6', name: 'Mie Ayam Komplit', price: 16000 },
 ];
 
 export default function App() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('Semua');
-  const [cartCount, setCartCount] = useState(0);
+  const [cartVisible, setCartVisible] = useState(false);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
 
-  const categories = ['Semua', ...Array.from(new Set(stores.map((s) => s.category)))];
-  const filteredStores = useMemo(
-    () =>
-      stores.filter((store) => {
-        const matchesQuery = `${store.name} ${store.category} ${store.description}`
-          .toLowerCase()
-          .includes(query.toLowerCase());
-        return matchesQuery && (category === 'Semua' || store.category === category);
-      }),
-    [query, category]
-  );
+  const categories = ['Semua', ...Array.from(new Set(STORES.map(s => s.category)))];
 
-  if (selectedStore) {
-    return (
-      <div className="app-shell">
-        <header className="topbar">
-          <div className="brand"><span className="brand-mark">K</span><span>KantinOnline</span></div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button onClick={() => setSelectedStore(null)} style={{ padding: '8px 12px', borderRadius: 8 }}>↩ Kembali</button>
-            <button className="cart-button">🛒 Keranjang ({cartCount})</button>
-          </div>
-        </header>
+  const filteredStores = useMemo(() => {
+    return STORES.filter((store) => {
+      const q = query.trim().toLowerCase();
+      const matchQuery = `${store.name} ${store.category} ${store.description}`.toLowerCase().includes(q);
+      const matchCat = category === 'Semua' || store.category === category;
+      return matchQuery && matchCat;
+    });
+  }, [query, category]);
 
-        <main className="container">
-          <article style={{ background: 'white', borderRadius: 12, padding: 20 }}>
-            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-              <div style={{ fontSize: 72 }}>{selectedStore.emoji}</div>
-              <div>
-                <h2 style={{ margin: 0 }}>{selectedStore.name}</h2>
-                <div style={{ color: '#64748b', marginTop: 6 }}>{selectedStore.category} · ★ {selectedStore.rating}</div>
-                <p style={{ marginTop: 12 }}>{selectedStore.description}</p>
-                <div style={{ marginTop: 18 }}><strong>Perkiraan:</strong> {selectedStore.estimate}</div>
-              </div>
-            </div>
+  const addToCart = (product: Product, qty: number) => {
+    if (qty <= 0) return;
+    const store = STORES.find(s => s.id === product.storeId)!;
+    setCart(prev => {
+      const existing = prev.find(i => i.productId === product.id);
+      if (existing) {
+        return prev.map(i => i.productId === product.id ? { ...i, qty: i.qty + qty } : i);
+      }
+      return [...prev, {
+        productId: product.id,
+        productName: product.name,
+        storeId: store.id,
+        storeName: store.name,
+        unitPrice: product.price,
+        qty
+      }];
+    });
+    setCartVisible(true);
+  };
 
-            <section style={{ marginTop: 24 }}>
-              <h3>Daftar menu (contoh)</h3>
-              <p>Di sini nanti tampilkan daftar produk untuk toko <strong>{selectedStore.name}</strong>.</p>
-            </section>
-          </article>
-        </main>
-      </div>
-    );
-  }
+  const updateCartQty = (productId: string, qty: number) => {
+    setCart(prev => prev.map(i => i.productId === productId ? { ...i, qty: Math.max(0, qty) } : i).filter(i => i.qty > 0));
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(prev => prev.filter(i => i.productId !== productId));
+  };
+
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+  const cartTotal = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
+  const storeProducts = selectedStore ? PRODUCTS.filter(p => p.storeId === selectedStore.id) : [];
 
   return (
     <div className="app-shell">
       <header className="topbar">
         <div className="brand"><span className="brand-mark">K</span><span>KantinOnline</span></div>
-        <button className="cart-button" onClick={() => setCartCount((c) => c + 1)}>🛒 Keranjang ({cartCount})</button>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <button className="cart-button" onClick={() => setCartVisible(v => !v)}>🛒 Keranjang ({cartCount})</button>
+        </div>
       </header>
 
       <main className="container">
-        <section className="hero">
-          <div>
-            <p className="eyebrow">KANTIN KAMPUS TERPADU</p>
-            <h1>Pesan makanan tanpa antre.</h1>
-            <p className="hero-copy">Pilih stand favoritmu, pesan menu, dan ambil langsung saat sudah siap.</p>
-          </div>
-          <div className="hero-emoji">🍽️</div>
-        </section>
-
-        <section className="toolbar">
-          <input aria-label="Cari stand" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari stand, kebab, kopi..." />
-          <select aria-label="Filter kategori" value={category} onChange={(event) => setCategory(event.target.value)}>
-            {categories.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
-        </section>
-
-        <div className="section-heading"><div><h2>Stand kantin</h2><p>{filteredStores.length} stand ditemukan</p></div><span className="status">● Semua buka</span></div>
-
-        <section className="store-grid">
-          {filteredStores.map((store) => (
-            <article
-              className="store-card"
-              key={store.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelectedStore(store)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedStore(store); }}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="store-image">{store.emoji}<span className="open-label">Buka</span></div>
-              <div className="store-content">
-                <div className="card-meta"><span>{store.category}</span><strong>★ {store.rating}</strong></div>
-                <h3>{store.name}</h3>
-                <p>{store.description}</p>
-                <div className="card-footer"><span>⏱ {store.estimate}</span></div>
+        {!selectedStore ? (
+          <>
+            <section className="hero">
+              <div>
+                <p className="eyebrow">KANTIN KAMPUS TERPADU</p>
+                <h1>Pesan makanan tanpa antre.</h1>
+                <p className="hero-copy">Pilih stand favoritmu, pesan menu, dan ambil langsung saat sudah siap.</p>
               </div>
-            </article>
-          ))}
-        </section>
-        {filteredStores.length === 0 && <div className="empty-state">Stand tidak ditemukan. Coba kata kunci lain.</div>}
+              <div className="hero-emoji">🍽️</div>
+            </section>
+
+            <section className="toolbar">
+              <input aria-label="Cari stand" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari stand, kebab, kopi..." />
+              <select aria-label="Filter kategori" value={category} onChange={(e) => setCategory(e.target.value)}>
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </section>
+
+            <div className="section-heading"><div><h2>Stand kantin</h2><p>{filteredStores.length} stand ditemukan</p></div><span className="status">● Semua buka</span></div>
+
+            <section className="store-grid">
+              {filteredStores.map(store => (
+                <article
+                  key={store.id}
+                  className="store-card"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedStore(store)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedStore(store); }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="store-image">{store.emoji}<span className="open-label">Buka</span></div>
+                  <div className="store-content">
+                    <div className="card-meta"><span>{store.category}</span><strong>★ {store.rating}</strong></div>
+                    <h3>{store.name}</h3>
+                    <p>{store.description}</p>
+                    <div className="card-footer"><span>⏱ {store.estimate}</span></div>
+                  </div>
+                </article>
+              ))}
+            </section>
+          </>
+        ) : (
+          <>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 18 }}>
+              <button onClick={() => setSelectedStore(null)} style={{ padding: 8, borderRadius: 8 }}>↩ Kembali</button>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedStore.name}</div>
+              <div style={{ marginLeft: 'auto', color: '#64748b' }}>{selectedStore.category} · ★ {selectedStore.rating}</div>
+            </div>
+
+            <section style={{ marginBottom: 12, display: 'grid', gap: 12 }}>
+              {storeProducts.map(product => (
+                <div key={product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 10, background: 'white', border: '1px solid #e6eef4' }}>
+                  <div>
+                    <div style={{ fontWeight: 700 }}>{product.name}</div>
+                    <div style={{ color: '#64748b', fontSize: 13 }}>{product.description}</div>
+                    <div style={{ marginTop: 8, fontWeight: 700 }}>Rp {product.price.toLocaleString('id-ID')}</div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <QuantityAdder onAdd={(qty) => addToCart(product, qty)} />
+                  </div>
+                </div>
+              ))}
+            </section>
+          </>
+        )}
       </main>
+
+      {cartVisible && (
+        <div style={{
+          position: 'fixed', right: 20, top: 80, width: 360, maxHeight: '70vh', overflow: 'auto',
+          background: 'white', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.12)', padding: 12, zIndex: 60
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <strong>Keranjang</strong>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { setCart([]); setCartVisible(false); }} style={{ padding: 6, borderRadius: 8 }}>Kosongkan</button>
+              <button onClick={() => setCartVisible(false)} style={{ padding: 6, borderRadius: 8 }}>Tutup</button>
+            </div>
+          </div>
+
+          {cart.length === 0 && <div style={{ padding: 12, color: '#64748b' }}>Keranjang kosong</div>}
+
+          {cart.map(item => (
+            <div key={item.productId} style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid #f0f4f7', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700 }}>{item.productName}</div>
+                <div style={{ fontSize: 13, color: '#64748b' }}>{item.storeName}</div>
+                <div style={{ marginTop: 6 }}>Rp {item.unitPrice.toLocaleString('id-ID')} × {item.qty} = <strong>Rp {(item.unitPrice * item.qty).toLocaleString('id-ID')}</strong></div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <input type="number" min={1} value={item.qty} onChange={(e) => updateCartQty(item.productId, Number(e.target.value) || 0)} style={{ width: 64 }} />
+                <button onClick={() => removeFromCart(item.productId)} style={{ padding: 6, borderRadius: 8 }}>Hapus</button>
+              </div>
+            </div>
+          ))}
+
+          {cart.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div>Total</div>
+                <div style={{ fontWeight: 700 }}>Rp {cartTotal.toLocaleString('id-ID')}</div>
+              </div>
+              <button style={{ width: '100%', padding: '10px 12px', borderRadius: 10, background: '#ea580c', color: 'white', fontWeight: 700 }}>Checkout</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+
+function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
+  const [value, setValue] = useState<number>(1);
+  return (
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input
+        aria-label="Jumlah"
+        type="number"
+        min={1}
+        value={value}
+        onChange={(e) => setValue(Math.max(1, Number(e.target.value) || 1))}
+        style={{ width: 72, padding: 6, borderRadius: 8, border: '1px solid #e6eef4' }}
+      />
+      <button onClick={() => onAdd(Math.max(1, value))} style={{ padding: '10px 12px', borderRadius: 8, background: '#ea580c', color: 'white', fontWeight: 700 }}>
+        Tambah
+      </button>
+    </div>
+  );
+}
+

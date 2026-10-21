@@ -120,6 +120,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const [cartVisible, setCartVisible] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [cartDrafts, setCartDrafts] = useState<Record<string, string>>({});
 
   const categories = ['Semua', ...Array.from(new Set(STORES.map((s) => s.category)))];
 
@@ -165,6 +166,11 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
 
   const removeFromCart = (productId: string) => {
     setCart((prev) => prev.filter((i) => i.productId !== productId));
+    setCartDrafts((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
   };
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
@@ -285,27 +291,53 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
 
           {cart.length === 0 && <div className="empty-cart">Keranjang kosong</div>}
 
-          {cart.map((item) => (
-            <div key={item.productId} className="cart-item">
-              <div className="cart-item-details">
-                <div className="cart-product-name">{item.productName}</div>
-                <div className="cart-product-store">{item.storeName}</div>
-                <div className="cart-product-total">Rp {item.unitPrice.toLocaleString('id-ID')} × {item.qty} = <strong>Rp {(item.unitPrice * item.qty).toLocaleString('id-ID')}</strong></div>
+          {cart.map((item) => {
+            const draftValue = cartDrafts[item.productId] ?? String(item.qty);
+
+            return (
+              <div key={item.productId} className="cart-item">
+                <div className="cart-item-details">
+                  <div className="cart-product-name">{item.productName}</div>
+                  <div className="cart-product-store">{item.storeName}</div>
+                  <div className="cart-product-total">Rp {item.unitPrice.toLocaleString('id-ID')} × {item.qty} = <strong>Rp {(item.unitPrice * item.qty).toLocaleString('id-ID')}</strong></div>
+                </div>
+                <div className="cart-qty-actions">
+                  <input
+                    type="number"
+                    min={1}
+                    value={draftValue}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+
+                      if (raw === '') {
+                        setCartDrafts((prev) => ({ ...prev, [item.productId]: '' }));
+                        return;
+                      }
+
+                      const nextQty = Number(raw);
+                      if (!Number.isFinite(nextQty) || nextQty < 0) {
+                        return;
+                      }
+
+                      setCartDrafts((prev) => ({ ...prev, [item.productId]: raw }));
+
+                      if (nextQty > 0) {
+                        updateCartQty(item.productId, nextQty);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const raw = e.target.value;
+                      const normalized = raw === '' || Number(raw) < 1 ? '1' : String(Math.floor(Number(raw)));
+
+                      setCartDrafts((prev) => ({ ...prev, [item.productId]: normalized }));
+                      updateCartQty(item.productId, Number(normalized));
+                    }}
+                  />
+                  <button onClick={() => removeFromCart(item.productId)} className="remove-item">Hapus</button>
+                </div>
               </div>
-              <div className="cart-qty-actions">
-                <input
-                  type="number"
-                  min={1}
-                  value={item.qty}
-                  onChange={(e) => {
-                    const nextQty = Number(e.target.value);
-                    updateCartQty(item.productId, Number.isFinite(nextQty) && nextQty > 0 ? nextQty : 0);
-                  }}
-                />
-                <button onClick={() => removeFromCart(item.productId)} className="remove-item">Hapus</button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {cart.length > 0 && (
             <div className="checkout-box">

@@ -45,7 +45,7 @@ const emptyForm: FormState = {
 const SESSION_KEY = 'kantinonline_session';
 
 const STORES: Store[] = [
-  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus spesial.' },
+  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus pilihan.' },
   { id: 'store-2', name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
   { id: 'store-3', name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
   { id: 'store-4', name: 'Dapur Ricebox & Bento', category: 'Ayam & Nasi', rating: 4.6, estimate: '10–15 menit', emoji: '🍱', description: 'Ricebox hangat dengan pilihan topping favorit.' },
@@ -73,22 +73,22 @@ function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
   const [value, setValue] = useState<string>('1');
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const next = event.target.value;
+    const raw = event.target.value;
 
-    if (next === '') {
+    if (raw === '') {
       setValue('');
       return;
     }
 
-    const parsed = Number(next);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      setValue(String(Math.floor(parsed)));
+    const next = Number(raw);
+    if (Number.isFinite(next) && next >= 0) {
+      setValue(raw);
     }
   };
 
   const handleAdd = () => {
-    const parsed = Number(value);
-    onAdd(Number.isFinite(parsed) && parsed > 0 ? parsed : 1);
+    const qty = Math.max(1, Number(value) || 1);
+    onAdd(qty);
     setValue('1');
   };
 
@@ -101,7 +101,7 @@ function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
         value={value}
         onChange={handleChange}
         onBlur={() => {
-          if (!value || Number(value) <= 0) {
+          if (!value || Number(value) < 1) {
             setValue('1');
           }
         }}
@@ -471,4 +471,3 @@ export default function App() {
     </div>
   );
 }
-

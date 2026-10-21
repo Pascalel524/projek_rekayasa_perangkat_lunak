@@ -1,4 +1,4 @@
-export const STUDENT_EMAIL_DOMAIN = "@student.ac.id";
+export const STUDENT_EMAIL_DOMAIN = "@student.pradita.ac.id";
 
 export type AuthErrorCode =
   | "INVALID_EMAIL_DOMAIN"
@@ -34,7 +34,7 @@ export function validateStudentEmail(email: string): { valid: boolean; error?: s
   if (!normalized.endsWith(STUDENT_EMAIL_DOMAIN)) {
     return {
       valid: false,
-      error: "Email hanya diperbolehkan menggunakan domain @student.ac.id.",
+      error: "Email hanya diperbolehkan menggunakan domain @student.pradita.ac.id.",
     };
   }
 

@@ -117,7 +117,7 @@ export default function App() {
                 type="email"
                 value={form.email}
                 onChange={updateField('email')}
-                placeholder="nama@student.ac.id"
+                placeholder="nama@student.pradita.ac.id"
                 required
               />
             </label>

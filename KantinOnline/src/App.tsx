@@ -16,7 +16,7 @@ const emptyForm: FormState = {
 };
 
 export default function App() {
-  const [mode, setMode] = useState<AuthMode>('login');
+  const [mode, setMode] = useState<AuthMode>('register');
   const [form, setForm] = useState<FormState>(emptyForm);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export default function App() {
         return;
       }
 
-      setMessage({ type: 'success', text: `Pendaftaran berhasil untuk ${result.data.email}.` });
+      setMessage({ type: 'success', text: `Pendaftaran berhasil untuk ${result.data.email}. Silakan login.` });
       setForm({ ...emptyForm });
       setMode('login');
       setIsSubmitting(false);
@@ -87,18 +87,24 @@ export default function App() {
         <div className="auth-toggle" aria-label="Mode autentikasi">
           <button
             type="button"
-            className={mode === 'login' ? 'active' : ''}
-            onClick={() => setMode('login')}
-          >
-            Login
-          </button>
-          <button
-            type="button"
             className={mode === 'register' ? 'active' : ''}
             onClick={() => setMode('register')}
           >
             Register
           </button>
+          <button
+            type="button"
+            className={mode === 'login' ? 'active' : ''}
+            onClick={() => setMode('login')}
+          >
+            Login
+          </button>
+        </div>
+
+        <div className="auth-note">
+          {mode === 'register'
+            ? 'Akun harus didaftarkan terlebih dahulu sebelum bisa login.'
+            : 'Jika belum punya akun, silakan register dulu.'}
         </div>
 
         {loggedInUser ? (

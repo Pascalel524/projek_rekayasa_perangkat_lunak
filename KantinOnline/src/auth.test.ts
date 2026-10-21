@@ -29,6 +29,17 @@ describe("Auth MVP - Register & Login", () => {
     }
   });
 
+  it("login gagal jika akun belum terdaftar", async () => {
+    const result = await loginUser("belumdaftar@student.pradita.ac.id", "123456");
+
+    expect(result.ok).toBe(false);
+
+    if (!result.ok) {
+      expect(result.error.code).toBe("USER_NOT_FOUND");
+      expect(result.error.message).toContain("register");
+    }
+  });
+
   it("login berhasil dengan kredensial valid", async () => {
     await registerUser("bob@student.pradita.ac.id", "123456");
 

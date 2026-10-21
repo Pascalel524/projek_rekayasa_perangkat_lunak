@@ -44,7 +44,7 @@ button {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }
 
 .brand-mark {
@@ -73,6 +73,17 @@ h1 {
   margin: 6px 0 0;
   font-size: clamp(24px, 5vw, 32px);
   line-height: 1.1;
+}
+
+.auth-note {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #7c2d12;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .auth-toggle {

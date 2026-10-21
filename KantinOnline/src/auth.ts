@@ -1,4 +1,5 @@
 export const STUDENT_EMAIL_DOMAIN = "@student.pradita.ac.id";
+export const USER_STORAGE_KEY = "kantinonline_users";
 
 export type AuthErrorCode =
   | "INVALID_EMAIL_DOMAIN"
@@ -19,6 +20,42 @@ type StoredUser = {
 };
 
 export const userStore: Record<string, StoredUser> = {};
+
+function isStorageAvailable(): boolean {
+  return typeof globalThis !== "undefined" && typeof globalThis.localStorage !== "undefined";
+}
+
+function loadPersistedUsers(): Record<string, StoredUser> {
+  if (!isStorageAvailable()) {
+    return {};
+  }
+
+  try {
+    const raw = globalThis.localStorage.getItem(USER_STORAGE_KEY);
+    if (!raw) {
+      return {};
+    }
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePersistedUsers(): void {
+  if (!isStorageAvailable()) {
+    return;
+  }
+
+  try {
+    globalThis.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userStore));
+  } catch {
+    // ignore storage write errors for MVP
+  }
+}
+
+Object.assign(userStore, loadPersistedUsers());
 
 export function validateStudentEmail(email: string): { valid: boolean; error?: string } {
   const normalized = email?.trim().toLowerCase();
@@ -101,6 +138,8 @@ export async function registerUser(
     createdAt: new Date().toISOString(),
   };
 
+  savePersistedUsers();
+
   return {
     ok: true,
     data: { email: normalizedEmail },
@@ -132,7 +171,7 @@ export async function loginUser(
       ok: false,
       error: {
         code: "USER_NOT_FOUND",
-        message: "Email belum terdaftar.",
+        message: "Akun belum terdaftar. Silakan register terlebih dahulu.",
       },
     };
   }

@@ -70,7 +70,27 @@ const PRODUCTS: Product[] = [
 ];
 
 function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
-  const [value, setValue] = useState<number>(1);
+  const [value, setValue] = useState<string>('1');
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.value;
+
+    if (next === '') {
+      setValue('');
+      return;
+    }
+
+    const parsed = Number(next);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      setValue(String(Math.floor(parsed)));
+    }
+  };
+
+  const handleAdd = () => {
+    const parsed = Number(value);
+    onAdd(Number.isFinite(parsed) && parsed > 0 ? parsed : 1);
+    setValue('1');
+  };
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -79,13 +99,15 @@ function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
         type="number"
         min={1}
         value={value}
-        onChange={(e) => setValue(Math.max(1, Number(e.target.value) || 1))}
+        onChange={handleChange}
+        onBlur={() => {
+          if (!value || Number(value) <= 0) {
+            setValue('1');
+          }
+        }}
         style={{ width: 72, padding: 6, borderRadius: 8, border: '1px solid #e6eef4' }}
       />
-      <button
-        onClick={() => onAdd(Math.max(1, value))}
-        style={{ padding: '10px 12px', borderRadius: 8, background: '#ea580c', color: 'white', fontWeight: 700 }}
-      >
+      <button onClick={handleAdd} style={{ padding: '10px 12px', borderRadius: 8, background: '#ea580c', color: 'white', fontWeight: 700 }}>
         Tambah
       </button>
     </div>
@@ -271,7 +293,15 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
                 <div className="cart-product-total">Rp {item.unitPrice.toLocaleString('id-ID')} × {item.qty} = <strong>Rp {(item.unitPrice * item.qty).toLocaleString('id-ID')}</strong></div>
               </div>
               <div className="cart-qty-actions">
-                <input type="number" min={1} value={item.qty} onChange={(e) => updateCartQty(item.productId, Number(e.target.value) || 0)} />
+                <input
+                  type="number"
+                  min={1}
+                  value={item.qty}
+                  onChange={(e) => {
+                    const nextQty = Number(e.target.value);
+                    updateCartQty(item.productId, Number.isFinite(nextQty) && nextQty > 0 ? nextQty : 0);
+                  }}
+                />
                 <button onClick={() => removeFromCart(item.productId)} className="remove-item">Hapus</button>
               </div>
             </div>

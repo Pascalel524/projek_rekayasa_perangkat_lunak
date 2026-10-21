@@ -156,8 +156,8 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
           <span className="brand-mark">K</span>
           <span>KantinOnline</span>
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.92 }}>{userEmail ?? 'Mahasiswa'}</span>
+        <div className="topbar-actions">
+          <span className="user-pill">{userEmail ?? 'Mahasiswa'}</span>
           <button className="cart-button" onClick={() => setCartVisible((v) => !v)}>🛒 Keranjang ({cartCount})</button>
           <button className="logout-button" onClick={onLogout}>Logout</button>
         </div>
@@ -226,22 +226,22 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
           </>
         ) : (
           <>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 18 }}>
-              <button onClick={() => setSelectedStore(null)} style={{ padding: 8, borderRadius: 8 }}>↩ Kembali</button>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedStore.name}</div>
-              <div style={{ marginLeft: 'auto', color: '#64748b' }}>{selectedStore.category} · ★ {selectedStore.rating}</div>
+            <div className="store-detail-header">
+              <button className="back-button" onClick={() => setSelectedStore(null)}>↩ Kembali</button>
+              <div className="store-title">{selectedStore.name}</div>
+              <div className="store-meta">{selectedStore.category} · ★ {selectedStore.rating}</div>
             </div>
 
-            <section style={{ marginBottom: 12, display: 'grid', gap: 12 }}>
+            <section className="product-list">
               {storeProducts.map((product) => (
-                <div key={product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 10, background: 'white', border: '1px solid #e6eef4' }}>
+                <div key={product.id} className="product-item">
                   <div>
-                    <div style={{ fontWeight: 700 }}>{product.name}</div>
-                    <div style={{ color: '#64748b', fontSize: 13 }}>{product.description}</div>
-                    <div style={{ marginTop: 8, fontWeight: 700 }}>Rp {product.price.toLocaleString('id-ID')}</div>
+                    <div className="product-name">{product.name}</div>
+                    <div className="product-description">{product.description}</div>
+                    <div className="product-price">Rp {product.price.toLocaleString('id-ID')}</div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div className="product-actions">
                     <QuantityAdder onAdd={(qty) => addToCart(product, qty)} />
                   </div>
                 </div>
@@ -252,38 +252,38 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
       </main>
 
       {cartVisible && (
-        <div style={{ position: 'fixed', right: 20, top: 80, width: 360, maxHeight: '70vh', overflow: 'auto', background: 'white', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.12)', padding: 12, zIndex: 60 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div className="cart-panel">
+          <div className="cart-header">
             <strong>Keranjang</strong>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setCart([]); setCartVisible(false); }} style={{ padding: 6, borderRadius: 8 }}>Kosongkan</button>
-              <button onClick={() => setCartVisible(false)} style={{ padding: 6, borderRadius: 8 }}>Tutup</button>
+            <div className="cart-actions">
+              <button onClick={() => { setCart([]); setCartVisible(false); }} className="clear-cart">Kosongkan</button>
+              <button onClick={() => setCartVisible(false)} className="close-cart">Tutup</button>
             </div>
           </div>
 
-          {cart.length === 0 && <div style={{ padding: 12, color: '#64748b' }}>Keranjang kosong</div>}
+          {cart.length === 0 && <div className="empty-cart">Keranjang kosong</div>}
 
           {cart.map((item) => (
-            <div key={item.productId} style={{ display: 'flex', gap: 8, padding: 8, borderBottom: '1px solid #f0f4f7', alignItems: 'center' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700 }}>{item.productName}</div>
-                <div style={{ fontSize: 13, color: '#64748b' }}>{item.storeName}</div>
-                <div style={{ marginTop: 6 }}>Rp {item.unitPrice.toLocaleString('id-ID')} × {item.qty} = <strong>Rp {(item.unitPrice * item.qty).toLocaleString('id-ID')}</strong></div>
+            <div key={item.productId} className="cart-item">
+              <div className="cart-item-details">
+                <div className="cart-product-name">{item.productName}</div>
+                <div className="cart-product-store">{item.storeName}</div>
+                <div className="cart-product-total">Rp {item.unitPrice.toLocaleString('id-ID')} × {item.qty} = <strong>Rp {(item.unitPrice * item.qty).toLocaleString('id-ID')}</strong></div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <input type="number" min={1} value={item.qty} onChange={(e) => updateCartQty(item.productId, Number(e.target.value) || 0)} style={{ width: 64 }} />
-                <button onClick={() => removeFromCart(item.productId)} style={{ padding: 6, borderRadius: 8 }}>Hapus</button>
+              <div className="cart-qty-actions">
+                <input type="number" min={1} value={item.qty} onChange={(e) => updateCartQty(item.productId, Number(e.target.value) || 0)} />
+                <button onClick={() => removeFromCart(item.productId)} className="remove-item">Hapus</button>
               </div>
             </div>
           ))}
 
           {cart.length > 0 && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div className="checkout-box">
+              <div className="total-row">
                 <div>Total</div>
-                <div style={{ fontWeight: 700 }}>Rp {cartTotal.toLocaleString('id-ID')}</div>
+                <div className="total-price">Rp {cartTotal.toLocaleString('id-ID')}</div>
               </div>
-              <button style={{ width: '100%', padding: '10px 12px', borderRadius: 10, background: '#ea580c', color: 'white', fontWeight: 700 }}>Checkout</button>
+              <button className="checkout-button">Checkout</button>
             </div>
           )}
         </div>
@@ -300,7 +300,6 @@ export default function App() {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(SESSION_KEY);
   });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateField = (field: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,7 +375,7 @@ export default function App() {
         <div className="auth-brand">
           <div className="brand-mark">K</div>
           <div>
-            <p className="eyebrow">KantinOnline</p>
+            <p className="eyebrow">KANTINONLINE</p>
             <h1>{mode === 'login' ? 'Masuk ke akun' : 'Buat akun baru'}</h1>
           </div>
         </div>
@@ -442,3 +441,4 @@ export default function App() {
     </div>
   );
 }
+

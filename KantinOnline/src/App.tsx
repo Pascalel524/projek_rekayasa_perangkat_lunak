@@ -474,8 +474,8 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
           <>
             <div className="store-detail-header">
               <button className="back-button" onClick={() => setSelectedStore(null)}>↩ Kembali</button>
-              <div className="store-title">{selectedStore.name}</div>
-              <div className="store-meta">{selectedStore.category} · ★ {selectedStore.rating}</div>
+              <div className="store-title">{selectedStore?.name}</div>
+              <div className="store-meta">{selectedStore?.category} · ★ {selectedStore?.rating}</div>
             </div>
 
             <section className="product-list">
@@ -502,7 +502,9 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
           <div className="cart-header">
             <strong>Keranjang</strong>
             <div className="cart-actions">
-              <button onClick={() => { setCart([]); setCartVisible(false); setPaymentInput(''); setPaymentFeedback(null); }} className="clear-cart">Kosongkan</button>
+              <button onClick={() => { setCart([]); setCartVisible(false); setPaymentInput(''); setPaymentFeedback(null); }} className="clear-cart">
+                Kosongkan
+              </button>
               <button onClick={() => setCartVisible(false)} className="close-cart">Tutup</button>
             </div>
           </div>

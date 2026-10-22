@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { loginUser, registerUser } from './auth';
+import { formatRupiah, validatePaymentAmount } from './payment';
 
 type AuthMode = 'login' | 'register';
 
@@ -36,6 +37,16 @@ type CartItem = {
   qty: number;
 };
 
+type PaymentHistoryEntry = {
+  id: string;
+  createdAt: string;
+  total: number;
+  paid: number;
+  change: number;
+  items: Array<{ name: string; qty: number; price: number }>;
+  status: 'Berhasil';
+};
+
 const emptyForm: FormState = {
   email: '',
   password: '',
@@ -43,9 +54,10 @@ const emptyForm: FormState = {
 };
 
 const SESSION_KEY = 'kantinonline_session';
+const PAYMENT_HISTORY_KEY = 'kantinonline_payment_history';
 
 const STORES: Store[] = [
-  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus pilihan.' },
+  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus spesial.' },
   { id: 'store-2', name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
   { id: 'store-3', name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
   { id: 'store-4', name: 'Dapur Ricebox & Bento', category: 'Ayam & Nasi', rating: 4.6, estimate: '10–15 menit', emoji: '🍱', description: 'Ricebox hangat dengan pilihan topping favorit.' },
@@ -121,6 +133,25 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [cartDrafts, setCartDrafts] = useState<Record<string, string>>({});
+  const [paymentInput, setPaymentInput] = useState('');
+  const [paymentFeedback, setPaymentFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryEntry[]>(() => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const raw = window.localStorage.getItem(PAYMENT_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(PAYMENT_HISTORY_KEY, JSON.stringify(paymentHistory));
+    }
+  }, [paymentHistory]);
 
   const categories = ['Semua', ...Array.from(new Set(STORES.map((s) => s.category)))];
 
@@ -176,6 +207,47 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
   const storeProducts = selectedStore ? PRODUCTS.filter((p) => p.storeId === selectedStore.id) : [];
+
+  const handlePayment = () => {
+    if (cart.length === 0) {
+      setPaymentFeedback({ type: 'error', message: 'Keranjang masih kosong. Tambahkan menu terlebih dahulu.' });
+      return;
+    }
+
+    const validation = validatePaymentAmount(cartTotal, paymentInput);
+
+    if (!validation.ok) {
+      setPaymentFeedback({ type: 'error', message: validation.message });
+      return;
+    }
+
+    const transaction: PaymentHistoryEntry = {
+      id: `PAY-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      total: cartTotal,
+      paid: validation.paid,
+      change: validation.change,
+      items: cart.map((item) => ({
+        name: item.productName,
+        qty: item.qty,
+        price: item.unitPrice,
+      })),
+      status: 'Berhasil',
+    };
+
+    setPaymentHistory((prev) => [transaction, ...prev].slice(0, 10));
+    setCart([]);
+    setCartDrafts({});
+    setPaymentInput('');
+    setPaymentFeedback({
+      type: 'success',
+      message:
+        validation.change > 0
+          ? `Pembayaran berhasil. Kembalian ${formatRupiah(validation.change)}.`
+          : 'Pembayaran berhasil. Uang pas.',
+    });
+    setCartVisible(false);
+  };
 
   return (
     <div className="app-shell">
@@ -251,6 +323,37 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
                 </article>
               ))}
             </section>
+
+            <section className="history-panel">
+              <div className="history-header">
+                <h3>Riwayat Pembayaran</h3>
+                <span>{paymentHistory.length} transaksi</span>
+              </div>
+
+              {paymentHistory.length === 0 ? (
+                <p className="empty-history">Belum ada pembayaran yang dicatat.</p>
+              ) : (
+                <div className="history-list">
+                  {paymentHistory.map((entry) => (
+                    <div key={entry.id} className="history-item">
+                      <div className="history-item-top">
+                        <strong>{entry.id}</strong>
+                        <span className="history-status">{entry.status}</span>
+                      </div>
+                      <div className="history-item-meta">
+                        <span>{new Date(entry.createdAt).toLocaleString('id-ID')}</span>
+                        <span>{entry.items.length} item</span>
+                      </div>
+                      <div className="history-item-total">Total: {formatRupiah(entry.total)}</div>
+                      <div className="history-item-detail">
+                        <span>Bayar: {formatRupiah(entry.paid)}</span>
+                        <span>Kembali: {formatRupiah(entry.change)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </>
         ) : (
           <>
@@ -284,7 +387,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
           <div className="cart-header">
             <strong>Keranjang</strong>
             <div className="cart-actions">
-              <button onClick={() => { setCart([]); setCartVisible(false); }} className="clear-cart">Kosongkan</button>
+              <button onClick={() => { setCart([]); setCartVisible(false); setPaymentInput(''); setPaymentFeedback(null); }} className="clear-cart">Kosongkan</button>
               <button onClick={() => setCartVisible(false)} className="close-cart">Tutup</button>
             </div>
           </div>
@@ -345,7 +448,27 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
                 <div>Total</div>
                 <div className="total-price">Rp {cartTotal.toLocaleString('id-ID')}</div>
               </div>
-              <button className="checkout-button">Checkout</button>
+
+              <div className="payment-block">
+                <label htmlFor="payment-amount">Nominal Bayar</label>
+                <input
+                  id="payment-amount"
+                  type="number"
+                  min={0}
+                  value={paymentInput}
+                  onChange={(event) => {
+                    setPaymentInput(event.target.value);
+                    if (paymentFeedback) setPaymentFeedback(null);
+                  }}
+                  placeholder="Masukkan nominal"
+                  className="payment-input"
+                />
+                <button className="checkout-button" onClick={handlePayment}>Bayar</button>
+              </div>
+
+              {paymentFeedback && (
+                <div className={`payment-feedback ${paymentFeedback.type}`}>{paymentFeedback.message}</div>
+              )}
             </div>
           )}
         </div>

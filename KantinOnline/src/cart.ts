@@ -17,11 +17,9 @@ export function addItemToCart(cart: CartItem[], item: CartItem) {
 
 export function updateCartQty(cart: CartItem[], productId: string, qty: number) {
   const nextQty = Math.max(0, qty);
-  return cart
-    .map((entry) =>
-      entry.productId === productId ? { ...entry, qty: nextQty } : entry
-    )
-    .filter((entry) => entry.qty > 0);
+  return cart.map((entry) =>
+    entry.productId === productId ? { ...entry, qty: nextQty } : entry
+  );
 }
 
 export function getCartTotal(cart: CartItem[]) {

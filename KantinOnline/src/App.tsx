@@ -1,3 +1,4 @@
+import React, { useMemo, useState, useEffect } from 'react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { loginUser, registerUser } from './auth';
 import { formatRupiah, validatePaymentAmount } from './payment';
@@ -37,12 +38,14 @@ type CartItem = {
   qty: number;
 };
 
+type PaymentHistoryEntry = {
 type PaymentHistoryItem = {
   id: string;
   createdAt: string;
   total: number;
   paid: number;
   change: number;
+  items: Array<{ name: string; qty: number; price: number }>;
   items: string[];
   status: 'Berhasil';
 };
@@ -57,6 +60,7 @@ const SESSION_KEY = 'kantinonline_session';
 const PAYMENT_HISTORY_KEY = 'kantinonline_payment_history';
 
 const STORES: Store[] = [
+  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus spesial.' },
   { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus special.' },
   { id: 'store-2', name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
   { id: 'store-3', name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
@@ -143,11 +147,31 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('Semua');
   const [cartVisible, setCartVisible] = useState(false);
+  const [checkoutPage, setCheckoutPage] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [cartDrafts, setCartDrafts] = useState<Record<string, string>>({});
   const [paymentInput, setPaymentInput] = useState('');
+  const [paymentFeedback, setPaymentFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [successPopup, setSuccessPopup] = useState<string | null>(null);
+
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryEntry[]>(() => {
+    if (typeof window === 'undefined') return [];
+
+    try {
+      const raw = window.localStorage.getItem(PAYMENT_HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(PAYMENT_HISTORY_KEY, JSON.stringify(paymentHistory));
+    }
+  }, [paymentHistory]);
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>(() => readPaymentHistory());
@@ -216,6 +240,22 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
     });
   };
 
+  const openCheckoutPage = () => {
+    if (cart.length === 0) {
+      setPaymentFeedback({ type: 'error', message: 'Keranjang masih kosong. Tambahkan menu terlebih dahulu.' });
+      return;
+    }
+
+    setPaymentFeedback(null);
+    setPaymentInput('');
+    setCheckoutPage(true);
+    setCartVisible(false);
+  };
+
+  const closeCheckoutPage = () => {
+    setCheckoutPage(false);
+    setPaymentInput('');
+    setPaymentFeedback(null);
   const handlePayment = () => {
     if (cart.length === 0) {
       setPaymentMessage('Keranjang masih kosong.');
@@ -254,8 +294,63 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const cartTotal = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
   const storeProducts = selectedStore ? PRODUCTS.filter((p) => p.storeId === selectedStore.id) : [];
 
+  const handlePayment = () => {
+    if (cart.length === 0) {
+      setPaymentFeedback({ type: 'error', message: 'Keranjang masih kosong. Tambahkan menu terlebih dahulu.' });
+      return;
+    }
+
+    const validation = validatePaymentAmount(cartTotal, paymentInput);
+
+    if (!validation.ok) {
+      setPaymentFeedback({ type: 'error', message: validation.message });
+      return;
+    }
+
+    const transaction: PaymentHistoryEntry = {
+      id: `PAY-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      total: cartTotal,
+      paid: validation.paid,
+      change: validation.change,
+      items: cart.map((item) => ({
+        name: item.productName,
+        qty: item.qty,
+        price: item.unitPrice,
+      })),
+      status: 'Berhasil',
+    };
+
+    setPaymentHistory((prev) => [transaction, ...prev].slice(0, 10));
+    setCart([]);
+    setCartDrafts({});
+    setPaymentInput('');
+    setPaymentFeedback({
+      type: 'success',
+      message: validation.change > 0
+        ? `Pembayaran berhasil. Kembalian ${formatRupiah(validation.change)}.`
+        : 'Pembayaran berhasil. Uang pas.',
+    });
+    setSuccessPopup(`Transaksi berhasil! Total ${formatRupiah(transaction.total)}`);
+    setCheckoutPage(false);
+    setCartVisible(false);
+  };
+
+  useEffect(() => {
+    if (!successPopup) return;
+
+    const timer = window.setTimeout(() => setSuccessPopup(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [successPopup]);
+
   return (
     <div className="app-shell">
+      {successPopup && (
+        <div className="success-popup" role="status" aria-live="polite">
+          {successPopup}
+        </div>
+      )}
+
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">K</span>
@@ -276,7 +371,78 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
       )}
 
       <main className="container">
-        {!selectedStore ? (
+        {checkoutPage ? (
+          <section className="checkout-page">
+            <div className="checkout-header">
+              <button className="back-button" onClick={closeCheckoutPage}>↩ Kembali</button>
+              <h2>Checkout</h2>
+            </div>
+
+            <div className="checkout-layout">
+              <div className="checkout-items-panel">
+                <div className="section-heading compact">
+                  <div>
+                    <h3>Ringkasan Pesanan</h3>
+                  </div>
+                  <button className="subtle-button" onClick={() => setCart([])}>Hapus Semua</button>
+                </div>
+
+                {cart.length === 0 ? (
+                  <div className="empty-cart">Keranjang kosong.</div>
+                ) : (
+                  cart.map((item) => (
+                    <div key={item.productId} className="checkout-item">
+                      <div>
+                        <div className="checkout-item-name">{item.productName}</div>
+                        <div className="checkout-item-store">{item.storeName}</div>
+                        <div className="checkout-item-price">{formatRupiah(item.unitPrice)} / item</div>
+                      </div>
+
+                      <div className="checkout-item-controls">
+                        <div className="quantity-stepper">
+                          <button onClick={() => updateCartQty(item.productId, item.qty - 1)} aria-label={`Kurangi ${item.productName}`}>-</button>
+                          <span>{item.qty}</span>
+                          <button onClick={() => updateCartQty(item.productId, item.qty + 1)} aria-label={`Tambah ${item.productName}`}>+</button>
+                        </div>
+                        <button className="remove-item" onClick={() => removeFromCart(item.productId)}>Hapus</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <aside className="checkout-summary-panel">
+                <h3>Detail Pembayaran</h3>
+                <div className="summary-row">
+                  <span>Subtotal</span>
+                  <strong>{formatRupiah(cartTotal)}</strong>
+                </div>
+
+                <label className="payment-field">
+                  <span>Nominal Bayar</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={paymentInput}
+                    onChange={(event) => {
+                      setPaymentInput(event.target.value);
+                      if (paymentFeedback) setPaymentFeedback(null);
+                    }}
+                    placeholder="Masukkan nominal"
+                  />
+                </label>
+
+                {paymentFeedback && (
+                  <div className={`payment-feedback ${paymentFeedback.type}`}>{paymentFeedback.message}</div>
+                )}
+
+                <button className="checkout-button full" onClick={handlePayment} disabled={cart.length === 0}>
+                  Bayar Sekarang
+                </button>
+              </aside>
+            </div>
+          </section>
+        ) : !selectedStore ? (
           <>
             <section className="hero">
               <div>
@@ -335,6 +501,37 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
                 </article>
               ))}
             </section>
+
+            <section className="history-panel">
+              <div className="history-header">
+                <h3>Riwayat Pembayaran</h3>
+                <span>{paymentHistory.length} transaksi</span>
+              </div>
+
+              {paymentHistory.length === 0 ? (
+                <p className="empty-history">Belum ada pembayaran yang dicatat.</p>
+              ) : (
+                <div className="history-list">
+                  {paymentHistory.map((entry) => (
+                    <div key={entry.id} className="history-item">
+                      <div className="history-item-top">
+                        <strong>{entry.id}</strong>
+                        <span className="history-status">{entry.status}</span>
+                      </div>
+                      <div className="history-item-meta">
+                        <span>{new Date(entry.createdAt).toLocaleString('id-ID')}</span>
+                        <span>{entry.items.length} item</span>
+                      </div>
+                      <div className="history-item-total">Total: {formatRupiah(entry.total)}</div>
+                      <div className="history-item-detail">
+                        <span>Bayar: {formatRupiah(entry.paid)}</span>
+                        <span>Kembali: {formatRupiah(entry.change)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </>
         ) : (
           <>
@@ -363,6 +560,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
         )}
       </main>
 
+      {cartVisible && !checkoutPage && (
       {historyVisible && (
         <aside className="history-panel">
           <div className="history-header">
@@ -400,7 +598,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
           <div className="cart-header">
             <strong>Keranjang</strong>
             <div className="cart-actions">
-              <button onClick={() => { setCart([]); setCartVisible(false); }} className="clear-cart">Kosongkan</button>
+              <button onClick={() => { setCart([]); setCartVisible(false); setPaymentInput(''); setPaymentFeedback(null); }} className="clear-cart">Kosongkan</button>
               <button onClick={() => setCartVisible(false)} className="close-cart">Tutup</button>
             </div>
           </div>
@@ -462,6 +660,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
                 <div className="total-price">{formatRupiah(cartTotal)}</div>
               </div>
 
+              <button className="checkout-button full" onClick={openCheckoutPage}>Checkout</button>
               <label className="payment-field">
                 <span>Nominal bayar</span>
                 <input

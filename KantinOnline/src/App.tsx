@@ -130,11 +130,13 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('Semua');
   const [cartVisible, setCartVisible] = useState(false);
+  const [checkoutPage, setCheckoutPage] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [cartDrafts, setCartDrafts] = useState<Record<string, string>>({});
   const [paymentInput, setPaymentInput] = useState('');
   const [paymentFeedback, setPaymentFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [successPopup, setSuccessPopup] = useState<string | null>(null);
 
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryEntry[]>(() => {
     if (typeof window === 'undefined') return [];
@@ -204,6 +206,24 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
     });
   };
 
+  const openCheckoutPage = () => {
+    if (cart.length === 0) {
+      setPaymentFeedback({ type: 'error', message: 'Keranjang masih kosong. Tambahkan menu terlebih dahulu.' });
+      return;
+    }
+
+    setPaymentFeedback(null);
+    setPaymentInput('');
+    setCheckoutPage(true);
+    setCartVisible(false);
+  };
+
+  const closeCheckoutPage = () => {
+    setCheckoutPage(false);
+    setPaymentInput('');
+    setPaymentFeedback(null);
+  };
+
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.qty * i.unitPrice, 0);
   const storeProducts = selectedStore ? PRODUCTS.filter((p) => p.storeId === selectedStore.id) : [];
@@ -241,16 +261,30 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
     setPaymentInput('');
     setPaymentFeedback({
       type: 'success',
-      message:
-        validation.change > 0
-          ? `Pembayaran berhasil. Kembalian ${formatRupiah(validation.change)}.`
-          : 'Pembayaran berhasil. Uang pas.',
+      message: validation.change > 0
+        ? `Pembayaran berhasil. Kembalian ${formatRupiah(validation.change)}.`
+        : 'Pembayaran berhasil. Uang pas.',
     });
+    setSuccessPopup(`Transaksi berhasil! Total ${formatRupiah(transaction.total)}`);
+    setCheckoutPage(false);
     setCartVisible(false);
   };
 
+  useEffect(() => {
+    if (!successPopup) return;
+
+    const timer = window.setTimeout(() => setSuccessPopup(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [successPopup]);
+
   return (
     <div className="app-shell">
+      {successPopup && (
+        <div className="success-popup" role="status" aria-live="polite">
+          {successPopup}
+        </div>
+      )}
+
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">K</span>
@@ -264,7 +298,78 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
       </header>
 
       <main className="container">
-        {!selectedStore ? (
+        {checkoutPage ? (
+          <section className="checkout-page">
+            <div className="checkout-header">
+              <button className="back-button" onClick={closeCheckoutPage}>↩ Kembali</button>
+              <h2>Checkout</h2>
+            </div>
+
+            <div className="checkout-layout">
+              <div className="checkout-items-panel">
+                <div className="section-heading compact">
+                  <div>
+                    <h3>Ringkasan Pesanan</h3>
+                  </div>
+                  <button className="subtle-button" onClick={() => setCart([])}>Hapus Semua</button>
+                </div>
+
+                {cart.length === 0 ? (
+                  <div className="empty-cart">Keranjang kosong.</div>
+                ) : (
+                  cart.map((item) => (
+                    <div key={item.productId} className="checkout-item">
+                      <div>
+                        <div className="checkout-item-name">{item.productName}</div>
+                        <div className="checkout-item-store">{item.storeName}</div>
+                        <div className="checkout-item-price">{formatRupiah(item.unitPrice)} / item</div>
+                      </div>
+
+                      <div className="checkout-item-controls">
+                        <div className="quantity-stepper">
+                          <button onClick={() => updateCartQty(item.productId, item.qty - 1)} aria-label={`Kurangi ${item.productName}`}>-</button>
+                          <span>{item.qty}</span>
+                          <button onClick={() => updateCartQty(item.productId, item.qty + 1)} aria-label={`Tambah ${item.productName}`}>+</button>
+                        </div>
+                        <button className="remove-item" onClick={() => removeFromCart(item.productId)}>Hapus</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <aside className="checkout-summary-panel">
+                <h3>Detail Pembayaran</h3>
+                <div className="summary-row">
+                  <span>Subtotal</span>
+                  <strong>{formatRupiah(cartTotal)}</strong>
+                </div>
+
+                <label className="payment-field">
+                  <span>Nominal Bayar</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={paymentInput}
+                    onChange={(event) => {
+                      setPaymentInput(event.target.value);
+                      if (paymentFeedback) setPaymentFeedback(null);
+                    }}
+                    placeholder="Masukkan nominal"
+                  />
+                </label>
+
+                {paymentFeedback && (
+                  <div className={`payment-feedback ${paymentFeedback.type}`}>{paymentFeedback.message}</div>
+                )}
+
+                <button className="checkout-button full" onClick={handlePayment} disabled={cart.length === 0}>
+                  Bayar Sekarang
+                </button>
+              </aside>
+            </div>
+          </section>
+        ) : !selectedStore ? (
           <>
             <section className="hero">
               <div>
@@ -382,7 +487,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
         )}
       </main>
 
-      {cartVisible && (
+      {cartVisible && !checkoutPage && (
         <div className="cart-panel">
           <div className="cart-header">
             <strong>Keranjang</strong>
@@ -449,26 +554,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
                 <div className="total-price">Rp {cartTotal.toLocaleString('id-ID')}</div>
               </div>
 
-              <div className="payment-block">
-                <label htmlFor="payment-amount">Nominal Bayar</label>
-                <input
-                  id="payment-amount"
-                  type="number"
-                  min={0}
-                  value={paymentInput}
-                  onChange={(event) => {
-                    setPaymentInput(event.target.value);
-                    if (paymentFeedback) setPaymentFeedback(null);
-                  }}
-                  placeholder="Masukkan nominal"
-                  className="payment-input"
-                />
-                <button className="checkout-button" onClick={handlePayment}>Bayar</button>
-              </div>
-
-              {paymentFeedback && (
-                <div className={`payment-feedback ${paymentFeedback.type}`}>{paymentFeedback.message}</div>
-              )}
+              <button className="checkout-button full" onClick={openCheckoutPage}>Checkout</button>
             </div>
           )}
         </div>

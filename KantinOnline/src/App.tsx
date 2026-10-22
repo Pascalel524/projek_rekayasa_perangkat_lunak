@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { loginUser, registerUser } from './auth';
 import { formatRupiah, validatePaymentAmount } from './payment';
 
@@ -38,12 +39,14 @@ type CartItem = {
 };
 
 type PaymentHistoryEntry = {
+type PaymentHistoryItem = {
   id: string;
   createdAt: string;
   total: number;
   paid: number;
   change: number;
   items: Array<{ name: string; qty: number; price: number }>;
+  items: string[];
   status: 'Berhasil';
 };
 
@@ -58,6 +61,7 @@ const PAYMENT_HISTORY_KEY = 'kantinonline_payment_history';
 
 const STORES: Store[] = [
   { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus spesial.' },
+  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus special.' },
   { id: 'store-2', name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
   { id: 'store-3', name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
   { id: 'store-4', name: 'Dapur Ricebox & Bento', category: 'Ayam & Nasi', rating: 4.6, estimate: '10–15 menit', emoji: '🍱', description: 'Ricebox hangat dengan pilihan topping favorit.' },
@@ -80,6 +84,19 @@ const PRODUCTS: Product[] = [
   { id: 'p-12', storeId: 'store-6', name: 'Bakso Urat Jumbo', price: 18000 },
   { id: 'p-13', storeId: 'store-6', name: 'Mie Ayam Komplit', price: 16000 },
 ];
+
+function readPaymentHistory(): PaymentHistoryItem[] {
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const raw = window.localStorage.getItem(PAYMENT_HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
   const [value, setValue] = useState<string>('1');
@@ -131,6 +148,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const [category, setCategory] = useState('Semua');
   const [cartVisible, setCartVisible] = useState(false);
   const [checkoutPage, setCheckoutPage] = useState(false);
+  const [historyVisible, setHistoryVisible] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [cartDrafts, setCartDrafts] = useState<Record<string, string>>({});
@@ -154,8 +172,23 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
       window.localStorage.setItem(PAYMENT_HISTORY_KEY, JSON.stringify(paymentHistory));
     }
   }, [paymentHistory]);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>(() => readPaymentHistory());
 
   const categories = ['Semua', ...Array.from(new Set(STORES.map((s) => s.category)))];
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(PAYMENT_HISTORY_KEY, JSON.stringify(paymentHistory));
+    }
+  }, [paymentHistory]);
+
+  useEffect(() => {
+    if (!paymentSuccess) return;
+    const timeout = window.setTimeout(() => setPaymentSuccess(null), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [paymentSuccess]);
 
   const filteredStores = useMemo(() => {
     return STORES.filter((store) => {
@@ -187,6 +220,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
       ];
     });
     setCartVisible(true);
+    setPaymentMessage(null);
   };
 
   const updateCartQty = (productId: string, qty: number) => {
@@ -222,6 +256,38 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
     setCheckoutPage(false);
     setPaymentInput('');
     setPaymentFeedback(null);
+  const handlePayment = () => {
+    if (cart.length === 0) {
+      setPaymentMessage('Keranjang masih kosong.');
+      return;
+    }
+
+    const total = cart.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+    const result = validatePaymentAmount(total, paymentInput);
+
+    if (!result.ok) {
+      setPaymentMessage(result.message);
+      setPaymentSuccess(null);
+      return;
+    }
+
+    const transaction: PaymentHistoryItem = {
+      id: `trx-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      total,
+      paid: result.paid,
+      change: result.change,
+      items: cart.map((item) => `${item.productName} x${item.qty}`),
+      status: 'Berhasil',
+    };
+
+    setPaymentHistory((prev) => [transaction, ...prev]);
+    setCart([]);
+    setCartVisible(false);
+    setHistoryVisible(true);
+    setPaymentInput('');
+    setPaymentMessage(null);
+    setPaymentSuccess(`Transaksi berhasil! ${result.change > 0 ? `Kembalian ${formatRupiah(result.change)}.` : 'Uang pas.'}`);
   };
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
@@ -293,9 +359,16 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
         <div className="topbar-actions">
           <span className="user-pill">{userEmail ?? 'Mahasiswa'}</span>
           <button className="cart-button" onClick={() => setCartVisible((v) => !v)}>🛒 Keranjang ({cartCount})</button>
+          <button className="cart-button" onClick={() => setHistoryVisible((v) => !v)}>🧾 Riwayat</button>
           <button className="logout-button" onClick={onLogout}>Logout</button>
         </div>
       </header>
+
+      {paymentSuccess && (
+        <div className="success-popup" role="status" aria-live="polite">
+          {paymentSuccess}
+        </div>
+      )}
 
       <main className="container">
         {checkoutPage ? (
@@ -488,6 +561,39 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
       </main>
 
       {cartVisible && !checkoutPage && (
+      {historyVisible && (
+        <aside className="history-panel">
+          <div className="history-header">
+            <strong>Riwayat Pembayaran</strong>
+            <button className="close-cart" onClick={() => setHistoryVisible(false)}>Tutup</button>
+          </div>
+
+          {paymentHistory.length === 0 ? (
+            <div className="empty-cart">Belum ada transaksi.</div>
+          ) : (
+            <div className="history-list">
+              {paymentHistory.map((item) => (
+                <div key={item.id} className="history-item">
+                  <div className="history-topline">
+                    <strong>{new Date(item.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+                    <span className="history-status">{item.status}</span>
+                  </div>
+                  <div className="history-meta">Total: {formatRupiah(item.total)}</div>
+                  <div className="history-meta">Bayar: {formatRupiah(item.paid)}</div>
+                  <div className="history-meta">Kembalian: {formatRupiah(item.change)}</div>
+                  <ul className="history-items">
+                    {item.items.map((entry, index) => (
+                      <li key={`${item.id}-${index}`}>{entry}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
+      )}
+
+      {cartVisible && (
         <div className="cart-panel">
           <div className="cart-header">
             <strong>Keranjang</strong>
@@ -551,10 +657,27 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
             <div className="checkout-box">
               <div className="total-row">
                 <div>Total</div>
-                <div className="total-price">Rp {cartTotal.toLocaleString('id-ID')}</div>
+                <div className="total-price">{formatRupiah(cartTotal)}</div>
               </div>
 
               <button className="checkout-button full" onClick={openCheckoutPage}>Checkout</button>
+              <label className="payment-field">
+                <span>Nominal bayar</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={paymentInput}
+                  onChange={(e) => {
+                    setPaymentInput(e.target.value);
+                    if (paymentMessage) setPaymentMessage(null);
+                  }}
+                  placeholder="Contoh: 50000"
+                />
+              </label>
+
+              {paymentMessage && <div className="payment-message error">{paymentMessage}</div>}
+
+              <button className="checkout-button" onClick={handlePayment}>Bayar</button>
             </div>
           )}
         </div>

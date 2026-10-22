@@ -57,7 +57,7 @@ const SESSION_KEY = 'kantinonline_session';
 const PAYMENT_HISTORY_KEY = 'kantinonline_payment_history';
 
 const STORES: Store[] = [
-  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus pilihan.' },
+  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus spesial.' },
   { id: 'store-2', name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
   { id: 'store-3', name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
   { id: 'store-4', name: 'Dapur Ricebox & Bento', category: 'Ayam & Nasi', rating: 4.6, estimate: '10–15 menit', emoji: '🍱', description: 'Ricebox hangat dengan pilihan topping favorit.' },
@@ -567,24 +567,6 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
               </div>
 
               <button className="checkout-button full" onClick={openCheckoutPage}>Checkout</button>
-
-              <label className="payment-field">
-                <span>Nominal bayar</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={paymentInput}
-                  onChange={(event) => {
-                    setPaymentInput(event.target.value);
-                    if (paymentFeedback) setPaymentFeedback(null);
-                  }}
-                  placeholder="Contoh: 50000"
-                />
-              </label>
-
-              {paymentFeedback && <div className="payment-message error">{paymentFeedback.message}</div>}
-
-              <button className="checkout-button" onClick={handlePayment}>Bayar</button>
             </div>
           )}
         </div>

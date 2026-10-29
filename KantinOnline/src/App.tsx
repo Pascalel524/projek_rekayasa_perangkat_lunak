@@ -4,10 +4,9 @@ import {
   registerUser,
   logoutUser,
   getCurrentUser,
-  saveTransaction,
-  getTransactionHistory
+  getClient
 } from './services/db';
-import { formatRupiah, validatePaymentAmount } from './payment';
+import { formatRupiah } from './payment';
 
 type AuthMode = 'login' | 'register';
 
@@ -49,9 +48,9 @@ type PaymentHistoryItem = {
   id: string;
   createdAt: string;
   total: number;
-  paid: number;
-  change: number;
-  items: Array<{ name: string; qty: number; price: number }>;
+  paymentMethod: string;
+  storeCount: number;
+  items: Array<{ name: string; qty: number; price: number; storeName?: string }>;
   status: 'Berhasil';
 };
 
@@ -67,7 +66,7 @@ const SESSION_USER_ID_KEY = 'kantinonline_user_id';
 const PAYMENT_HISTORY_KEY = 'kantinonline_payment_history';
 
 const STORES: Store[] = [
-  { id: 'store-1', name: 'Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus spesial.' },
+  { id: 'store-1', name: 'Stand Kebab & Burger Middle East', category: 'Fast Food', rating: 4.8, estimate: '10–15 menit', emoji: '🌯', description: 'Kebab daging sapi, burger, dan hotdog dengan saus spesial.' },
   { id: 'store-2', name: 'Ayam Geprek Kampus', category: 'Ayam & Nasi', rating: 4.9, estimate: '15–20 menit', emoji: '🍗', description: 'Ayam geprek renyah dengan sambal pilihan level 1–10.' },
   { id: 'store-3', name: 'Kedai Kopi Mahasiswa', category: 'Minuman & Snack', rating: 4.7, estimate: '5–10 menit', emoji: '☕', description: 'Kopi susu gula aren, toast, dan minuman segar.' },
   { id: 'store-4', name: 'Dapur Ricebox & Bento', category: 'Ayam & Nasi', rating: 4.6, estimate: '10–15 menit', emoji: '🍱', description: 'Ricebox hangat dengan pilihan topping favorit.' },
@@ -149,6 +148,58 @@ function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
   );
 }
 
+function QrisVisual() {
+  return (
+    <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="200" height="200" fill="white" />
+      {/* Top Left Marker */}
+      <rect x="15" y="15" width="45" height="45" rx="6" fill="#0f172a" />
+      <rect x="22" y="22" width="31" height="31" rx="4" fill="white" />
+      <rect x="29" y="29" width="17" height="17" rx="2" fill="#0f172a" />
+
+      {/* Top Right Marker */}
+      <rect x="140" y="15" width="45" height="45" rx="6" fill="#0f172a" />
+      <rect x="147" y="22" width="31" height="31" rx="4" fill="white" />
+      <rect x="154" y="29" width="17" height="17" rx="2" fill="#0f172a" />
+
+      {/* Bottom Left Marker */}
+      <rect x="15" y="140" width="45" height="45" rx="6" fill="#0f172a" />
+      <rect x="22" y="147" width="31" height="31" rx="4" fill="white" />
+      <rect x="29" y="154" width="17" height="17" rx="2" fill="#0f172a" />
+
+      {/* QR Data Matrix Patterns */}
+      <rect x="70" y="20" width="10" height="20" fill="#0f172a" />
+      <rect x="90" y="15" width="15" height="10" fill="#0f172a" />
+      <rect x="115" y="20" width="15" height="15" fill="#0f172a" />
+      <rect x="70" y="50" width="20" height="10" fill="#0f172a" />
+      <rect x="100" y="45" width="25" height="15" fill="#0f172a" />
+      <rect x="20" y="70" width="15" height="20" fill="#0f172a" />
+      <rect x="45" y="75" width="15" height="15" fill="#0f172a" />
+      <rect x="70" y="70" width="25" height="25" fill="#0f172a" />
+      <rect x="105" y="70" width="15" height="15" fill="#0f172a" />
+      <rect x="130" y="75" width="20" height="15" fill="#0f172a" />
+      <rect x="160" y="70" width="25" height="20" fill="#0f172a" />
+      <rect x="20" y="100" width="25" height="15" fill="#0f172a" />
+      <rect x="55" y="105" width="15" height="20" fill="#0f172a" />
+      <rect x="80" y="105" width="40" height="15" fill="#0f172a" />
+      <rect x="130" y="100" width="15" height="25" fill="#0f172a" />
+      <rect x="155" y="100" width="25" height="15" fill="#0f172a" />
+      <rect x="70" y="130" width="15" height="25" fill="#0f172a" />
+      <rect x="95" y="130" width="25" height="15" fill="#0f172a" />
+      <rect x="130" y="135" width="25" height="20" fill="#0f172a" />
+      <rect x="165" y="130" width="20" height="25" fill="#0f172a" />
+      <rect x="70" y="165" width="25" height="20" fill="#0f172a" />
+      <rect x="105" y="160" width="20" height="25" fill="#0f172a" />
+      <rect x="135" y="165" width="20" height="20" fill="#0f172a" />
+      <rect x="165" y="165" width="20" height="15" fill="#0f172a" />
+
+      {/* Center QRIS Badge */}
+      <rect x="82" y="82" width="36" height="36" rx="8" fill="white" stroke="#dc2626" strokeWidth="2" />
+      <text x="100" y="104" textAnchor="middle" fill="#dc2626" fontSize="11" fontWeight="900" fontFamily="sans-serif">QRIS</text>
+    </svg>
+  );
+}
+
 function MainKantinApp({
   userEmail,
   userId,
@@ -166,10 +217,10 @@ function MainKantinApp({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [cartDrafts, setCartDrafts] = useState<Record<string, string>>({});
-  const [paymentInput, setPaymentInput] = useState('');
-  const [paymentFeedback, setPaymentFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [successPopup, setSuccessPopup] = useState<string | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>(() => readPaymentHistory());
+  const [qrisModalVisible, setQrisModalVisible] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const categories = ['Semua', ...Array.from(new Set(STORES.map((store) => store.category)))];
 
@@ -182,7 +233,7 @@ function MainKantinApp({
   useEffect(() => {
     if (!successPopup) return;
 
-    const timer = window.setTimeout(() => setSuccessPopup(null), 2200);
+    const timer = window.setTimeout(() => setSuccessPopup(null), 3000);
     return () => window.clearTimeout(timer);
   }, [successPopup]);
 
@@ -194,6 +245,20 @@ function MainKantinApp({
       return matchQuery && matchCat;
     });
   }, [query, category]);
+
+  // Kelompokkan cart berdasarkan toko
+  const cartGroupedByStore = useMemo(() => {
+    const groups: Record<string, { storeName: string; items: CartItem[] }> = {};
+    cart.forEach((item) => {
+      if (!groups[item.storeId]) {
+        groups[item.storeId] = { storeName: item.storeName, items: [] };
+      }
+      groups[item.storeId].items.push(item);
+    });
+    return groups;
+  }, [cart]);
+
+  const distinctStoresCount = Object.keys(cartGroupedByStore).length;
 
   const addToCart = (product: Product, qty: number) => {
     if (qty <= 0) return;
@@ -219,7 +284,6 @@ function MainKantinApp({
     });
 
     setCartVisible(true);
-    setPaymentFeedback(null);
   };
 
   const updateCartQty = (productId: string, qty: number) => {
@@ -240,68 +304,69 @@ function MainKantinApp({
   };
 
   const openCheckoutPage = () => {
-    if (cart.length === 0) {
-      setPaymentFeedback({ type: 'error', message: 'Keranjang masih kosong. Tambahkan menu terlebih dahulu.' });
-      return;
-    }
-
-    setPaymentFeedback(null);
-    setPaymentInput('');
+    if (cart.length === 0) return;
     setCheckoutPage(true);
     setCartVisible(false);
   };
 
   const closeCheckoutPage = () => {
     setCheckoutPage(false);
-    setPaymentInput('');
-    setPaymentFeedback(null);
+    setQrisModalVisible(false);
   };
 
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const storeProducts = selectedStore ? PRODUCTS.filter((product) => product.storeId === selectedStore.id) : [];
 
-  const handlePayment = async () => {
-    if (cart.length === 0) {
-      setPaymentFeedback({ type: 'error', message: 'Keranjang masih kosong. Tambahkan menu terlebih dahulu.' });
-      return;
-    }
+  const handleStartQrisPayment = () => {
+    if (cart.length === 0) return;
+    setQrisModalVisible(true);
+  };
 
-    const validation = validatePaymentAmount(cartTotal, paymentInput);
+  const handleConfirmQrisSuccess = async () => {
+    setIsProcessingPayment(true);
+    const orderId = `KNT-${Date.now().toString().slice(-6)}`;
 
-    if (!validation.ok) {
-      setPaymentFeedback({ type: 'error', message: validation.message });
-      return;
+    // Catat ke Supabase jika ada user terautentikasi
+    try {
+      if (userId) {
+        const client = getClient();
+        await client.from('transactions').insert({
+          user_id: userId,
+          total_price: cartTotal,
+          payment_method: 'QRIS',
+          payment_status: 'SUCCESS'
+        });
+      }
+    } catch (err) {
+      console.warn('Gagal mencatat transaksi ke Supabase:', err);
     }
 
     const transaction: PaymentHistoryItem = {
-      id: `PAY-${Date.now()}`,
+      id: orderId,
       createdAt: new Date().toISOString(),
       total: cartTotal,
-      paid: validation.paid,
-      change: validation.change,
+      paymentMethod: 'QRIS Terpadu',
+      storeCount: distinctStoresCount,
       items: cart.map((item) => ({
         name: item.productName,
         qty: item.qty,
         price: item.unitPrice,
+        storeName: item.storeName
       })),
       status: 'Berhasil',
     };
 
-    setPaymentHistory((prev) => [transaction, ...prev].slice(0, 10));
+    setPaymentHistory((prev) => [transaction, ...prev].slice(0, 15));
     setCart([]);
     setCartDrafts({});
-    setPaymentInput('');
-    setPaymentFeedback({
-      type: 'success',
-      message:
-        validation.change > 0
-          ? `Pembayaran berhasil. Kembalian ${formatRupiah(validation.change)}.`
-          : 'Pembayaran berhasil. Uang pas.',
-    });
-    setSuccessPopup(`Transaksi berhasil! Total ${formatRupiah(transaction.total)}`);
+    setQrisModalVisible(false);
     setCheckoutPage(false);
-    setCartVisible(false);
+    setIsProcessingPayment(false);
+
+    setSuccessPopup(
+      `Pembayaran QRIS Berhasil! Total ${formatRupiah(cartTotal)}. Pesanan telah diteruskan ke ${distinctStoresCount} stand kantin.`
+    );
   };
 
   return (
@@ -309,6 +374,72 @@ function MainKantinApp({
       {successPopup && (
         <div className="success-popup" role="status" aria-live="polite">
           {successPopup}
+        </div>
+      )}
+
+      {/* QRIS PAYMENT MODAL */}
+      {qrisModalVisible && (
+        <div className="qris-modal-overlay">
+          <div className="qris-modal-card">
+            <div className="qris-top-banner">
+              <h3>📱 QRIS Terpadu Kantin</h3>
+              <button
+                onClick={() => setQrisModalVisible(false)}
+                style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="qris-body">
+              <div className="qris-merchant-info">
+                <span className="qris-merchant-name">Kantin Kampus Terpadu</span>
+                <span className="qris-merchant-sub">NMID: ID1020304050607 · Pesanan {distinctStoresCount} Stand Berbeda</span>
+              </div>
+
+              <div className="qris-qr-wrapper">
+                <div className="qris-qr-inner">
+                  <QrisVisual />
+                </div>
+                <div className="qris-qr-tag">SCAN & BAYAR DI SINI</div>
+              </div>
+
+              <div className="qris-amount-box">
+                <span>Total Pembayaran:</span>
+                <strong>{formatRupiah(cartTotal)}</strong>
+              </div>
+
+              <div className="qris-timer">
+                ⏱ Batas Waktu Pembayaran: 15:00
+              </div>
+
+              <div className="qris-instruction">
+                <strong>Cara Pembayaran:</strong>
+                <ol>
+                  <li>Buka aplikasi m-Banking atau e-Wallet Anda (BCA, GoPay, OVO, Dana, dll.).</li>
+                  <li>Scan QRIS di atas dan pastikan nominal sesuai: <b>{formatRupiah(cartTotal)}</b>.</li>
+                  <li>Konfirmasi PIN pembayaran di ponsel Anda.</li>
+                  <li>Setelah bayar, tekan tombol konfirmasi di bawah ini.</li>
+                </ol>
+              </div>
+
+              <div className="qris-actions">
+                <button
+                  className="btn-confirm-payment"
+                  onClick={handleConfirmQrisSuccess}
+                  disabled={isProcessingPayment}
+                >
+                  {isProcessingPayment ? 'Memverifikasi Pembayaran...' : '✓ Saya Sudah Membayar'}
+                </button>
+                <button
+                  className="btn-cancel-payment"
+                  onClick={() => setQrisModalVisible(false)}
+                >
+                  Batal / Ganti Pesanan
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -330,14 +461,17 @@ function MainKantinApp({
           <section className="checkout-page">
             <div className="checkout-header">
               <button className="back-button" onClick={closeCheckoutPage}>↩ Kembali</button>
-              <h2>Checkout</h2>
+              <h2>Checkout Terpadu</h2>
             </div>
 
             <div className="checkout-layout">
               <div className="checkout-items-panel">
                 <div className="section-heading compact">
                   <div>
-                    <h3>Ringkasan Pesanan</h3>
+                    <h3>Rincian Pesanan per Stand</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748b' }}>
+                      Pesanan dari <strong>{distinctStoresCount} stand berbeda</strong> akan diproses serentak setelah pembayaran lunas.
+                    </p>
                   </div>
                   <button className="subtle-button" onClick={() => setCart([])}>Hapus Semua</button>
                 </div>
@@ -345,21 +479,30 @@ function MainKantinApp({
                 {cart.length === 0 ? (
                   <div className="empty-cart">Keranjang kosong.</div>
                 ) : (
-                  cart.map((item) => (
-                    <div key={item.productId} className="checkout-item">
-                      <div>
-                        <div className="checkout-item-name">{item.productName}</div>
-                        <div className="checkout-item-store">{item.storeName}</div>
-                        <div className="checkout-item-price">{formatRupiah(item.unitPrice)} / item</div>
+                  Object.entries(cartGroupedByStore).map(([storeId, group]) => (
+                    <div key={storeId} className="checkout-store-group">
+                      <div className="checkout-store-header">
+                        <span>🏪</span>
+                        <span>{group.storeName}</span>
                       </div>
+                      <div className="checkout-store-items">
+                        {group.items.map((item) => (
+                          <div key={item.productId} className="checkout-item">
+                            <div>
+                              <div className="checkout-item-name">{item.productName}</div>
+                              <div className="checkout-item-price">{formatRupiah(item.unitPrice)} / item</div>
+                            </div>
 
-                      <div className="checkout-item-controls">
-                        <div className="quantity-stepper">
-                          <button onClick={() => updateCartQty(item.productId, item.qty - 1)} aria-label={`Kurangi ${item.productName}`}>-</button>
-                          <span>{item.qty}</span>
-                          <button onClick={() => updateCartQty(item.productId, item.qty + 1)} aria-label={`Tambah ${item.productName}`}>+</button>
-                        </div>
-                        <button className="remove-item" onClick={() => removeFromCart(item.productId)}>Hapus</button>
+                            <div className="checkout-item-controls">
+                              <div className="quantity-stepper">
+                                <button onClick={() => updateCartQty(item.productId, item.qty - 1)} aria-label={`Kurangi ${item.productName}`}>-</button>
+                                <span>{item.qty}</span>
+                                <button onClick={() => updateCartQty(item.productId, item.qty + 1)} aria-label={`Tambah ${item.productName}`}>+</button>
+                              </div>
+                              <button className="remove-item" onClick={() => removeFromCart(item.productId)}>Hapus</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))
@@ -368,31 +511,49 @@ function MainKantinApp({
 
               <aside className="checkout-summary-panel">
                 <h3>Detail Pembayaran</h3>
+
                 <div className="summary-row">
-                  <span>Subtotal</span>
+                  <span>Subtotal Pesanan</span>
                   <strong>{formatRupiah(cartTotal)}</strong>
                 </div>
 
-                <label className="payment-field">
-                  <span>Nominal Bayar</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={paymentInput}
-                    onChange={(event) => {
-                      setPaymentInput(event.target.value);
-                      if (paymentFeedback) setPaymentFeedback(null);
-                    }}
-                    placeholder="Masukkan nominal"
-                  />
-                </label>
+                <div className="summary-row">
+                  <span>Biaya Layanan Kantin</span>
+                  <span style={{ color: '#16a34a', fontWeight: 700 }}>Gratis</span>
+                </div>
 
-                {paymentFeedback && (
-                  <div className={`payment-feedback ${paymentFeedback.type}`}>{paymentFeedback.message}</div>
-                )}
+                <div className="summary-row" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', fontSize: '16px' }}>
+                  <span>Total Tagihan</span>
+                  <strong style={{ color: '#ea580c', fontSize: '18px' }}>{formatRupiah(cartTotal)}</strong>
+                </div>
 
-                <button className="checkout-button full" onClick={handlePayment} disabled={cart.length === 0}>
-                  Bayar Sekarang
+                {/* Metode Pembayaran QRIS */}
+                <div className="payment-method-card">
+                  <div className="payment-method-header">
+                    <strong style={{ fontSize: '14px', color: '#0f172a' }}>📱 QRIS Terpadu Kantin</strong>
+                    <span className="qris-badge">OTOMATIS</span>
+                  </div>
+                  <p className="payment-method-desc">
+                    Cukup <strong>1 kali scan QRIS</strong> untuk membayar seluruh pesanan dari {distinctStoresCount} stand berbeda. Makanan langsung dibuat otomatis setelah lunas.
+                  </p>
+                  <div className="payment-supported-apps">
+                    <span className="app-pill">BCA</span>
+                    <span className="app-pill">Mandiri</span>
+                    <span className="app-pill">GoPay</span>
+                    <span className="app-pill">OVO</span>
+                    <span className="app-pill">Dana</span>
+                    <span className="app-pill">ShopeePay</span>
+                  </div>
+                </div>
+
+                <button
+                  className="checkout-button full"
+                  onClick={handleStartQrisPayment}
+                  disabled={cart.length === 0}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <span>📲</span>
+                  <span>Bayar Sekarang dengan QRIS</span>
                 </button>
               </aside>
             </div>
@@ -403,7 +564,7 @@ function MainKantinApp({
               <div>
                 <p className="eyebrow">KANTIN KAMPUS TERPADU</p>
                 <h1>Pesan makanan tanpa antre.</h1>
-                <p className="hero-copy">Pilih stand favoritmu, pesan menu, dan ambil langsung saat sudah siap.</p>
+                <p className="hero-copy">Pilih stand favoritmu, pesan menu, bayar praktis via QRIS, dan ambil langsung saat sudah siap.</p>
               </div>
               <div className="hero-emoji">🍽️</div>
             </section>
@@ -470,18 +631,21 @@ function MainKantinApp({
                   {paymentHistory.map((entry) => (
                     <div key={entry.id} className="history-item">
                       <div className="history-item-top">
-                        <strong>{entry.id}</strong>
+                        <strong>Order #{entry.id}</strong>
                         <span className="history-status">{entry.status}</span>
                       </div>
                       <div className="history-item-meta">
                         <span>{new Date(entry.createdAt).toLocaleString('id-ID')}</span>
-                        <span>{entry.items.length} item</span>
+                        <span>{entry.paymentMethod}</span>
                       </div>
                       <div className="history-item-total">Total: {formatRupiah(entry.total)}</div>
-                      <div className="history-item-detail">
-                        <span>Bayar: {formatRupiah(entry.paid)}</span>
-                        <span>Kembali: {formatRupiah(entry.change)}</span>
-                      </div>
+                      <ul className="history-items" style={{ margin: '6px 0 0', paddingLeft: '18px', fontSize: '13px', color: '#475569' }}>
+                        {entry.items.map((it, idx) => (
+                          <li key={idx}>
+                            {it.name} x{it.qty} {it.storeName ? `(${it.storeName})` : ''} — {formatRupiah(it.price * it.qty)}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   ))}
                 </div>
@@ -520,7 +684,7 @@ function MainKantinApp({
           <div className="cart-header">
             <strong>Keranjang</strong>
             <div className="cart-actions">
-              <button onClick={() => { setCart([]); setCartVisible(false); setPaymentInput(''); setPaymentFeedback(null); }} className="clear-cart">
+              <button onClick={() => { setCart([]); setCartVisible(false); }} className="clear-cart">
                 Kosongkan
               </button>
               <button onClick={() => setCartVisible(false)} className="close-cart">Tutup</button>
@@ -584,7 +748,9 @@ function MainKantinApp({
                 <div className="total-price">{formatRupiah(cartTotal)}</div>
               </div>
 
-              <button className="checkout-button full" onClick={openCheckoutPage}>Checkout</button>
+              <button className="checkout-button full" onClick={openCheckoutPage}>
+                Lanjut ke Checkout ({distinctStoresCount} Stand)
+              </button>
             </div>
           )}
         </div>
@@ -604,15 +770,14 @@ function MainKantinApp({
               {paymentHistory.map((item) => (
                 <div key={item.id} className="history-item">
                   <div className="history-topline">
-                    <strong>{new Date(item.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</strong>
+                    <strong>Order #{item.id}</strong>
                     <span className="history-status">{item.status}</span>
                   </div>
-                  <div className="history-meta">Total: {formatRupiah(item.total)}</div>
-                  <div className="history-meta">Bayar: {formatRupiah(item.paid)}</div>
-                  <div className="history-meta">Kembalian: {formatRupiah(item.change)}</div>
-                  <ul className="history-items">
+                  <div className="history-meta">{new Date(item.createdAt).toLocaleString('id-ID')} · {item.paymentMethod}</div>
+                  <div className="history-meta" style={{ fontWeight: 800, color: '#ea580c' }}>Total: {formatRupiah(item.total)}</div>
+                  <ul className="history-items" style={{ margin: '6px 0 0', paddingLeft: '18px', fontSize: '13px' }}>
                     {item.items.map((entry, index) => (
-                      <li key={`${item.id}-${index}`}>{`${entry.name} x${entry.qty}`}</li>
+                      <li key={`${item.id}-${index}`}>{`${entry.name} x${entry.qty} ${entry.storeName ? `(${entry.storeName})` : ''}`}</li>
                     ))}
                   </ul>
                 </div>

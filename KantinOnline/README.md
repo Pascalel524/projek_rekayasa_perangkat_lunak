@@ -3,7 +3,7 @@
 Panduan singkat untuk menjalankan aplikasi KantinOnline yang berada di folder `KantinOnline` dalam repo ini.
 
 Persyaratan
-- Node.js v18+ dan npm atau pnpm/yarn
+- Node.js v22+ dan npm atau pnpm/yarn (Supabase JavaScript client memerlukan Node.js 22+)
 - Koneksi internet untuk mengunduh dependensi
 
 Langkah menjalankan (pengembangan)
@@ -25,9 +25,11 @@ Perintah berguna
 - npm run preview   -> Preview hasil build (Vite preview)
 - npm run typecheck -> Jalankan TypeScript type check (npx tsc --noEmit)
 
-Catatan environment
-- Frontend ini tidak memerlukan variabel lingkungan khusus untuk versi awal.
-- Jika Anda menambahkan integrasi API/backend nanti, buat file `.env` atau atur secret pada platform hosting.
+Konfigurasi database Supabase
+1. Salin `.env.example` menjadi `.env.local`, lalu isi URL project dan publishable/anon key dari pengaturan API Supabase.
+2. Jalankan isi `supabase/schema.sql` pada SQL Editor project Supabase untuk membuat tabel, trigger profil, kebijakan RLS, dan fungsi transaksi.
+3. Jangan pernah menaruh `service_role` key di aplikasi frontend. Password akun dikelola Supabase Auth dan tidak disimpan di tabel `users`.
+4. Modul layanan database tersedia di `src/services/db.ts`. Alur UI yang ada belum dialihkan dari penyimpanan lokal.
 
 Panduan build & deploy (statis)
 1. Bangun aplikasi produksi:

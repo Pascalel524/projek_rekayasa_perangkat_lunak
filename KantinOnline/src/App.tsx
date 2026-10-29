@@ -1,10 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { loginUser, registerUser } from './auth';
+import {
+  loginUser,
+  registerUser,
+  logoutUser,
+  getCurrentUser,
+  saveTransaction,
+  getTransactionHistory
+} from './services/db';
 import { formatRupiah, validatePaymentAmount } from './payment';
 
 type AuthMode = 'login' | 'register';
 
 type FormState = {
+  name: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -48,12 +56,14 @@ type PaymentHistoryItem = {
 };
 
 const emptyForm: FormState = {
+  name: '',
   email: '',
   password: '',
   confirmPassword: '',
 };
 
 const SESSION_KEY = 'kantinonline_session';
+const SESSION_USER_ID_KEY = 'kantinonline_user_id';
 const PAYMENT_HISTORY_KEY = 'kantinonline_payment_history';
 
 const STORES: Store[] = [
@@ -139,7 +149,15 @@ function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
   );
 }
 
-function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLogout: () => void }) {
+function MainKantinApp({
+  userEmail,
+  userId,
+  onLogout
+}: {
+  userEmail: string | null;
+  userId: string | null;
+  onLogout: () => void;
+}) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('Semua');
   const [cartVisible, setCartVisible] = useState(false);
@@ -243,7 +261,7 @@ function MainKantinApp({ userEmail, onLogout }: { userEmail: string | null; onLo
   const cartTotal = cart.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
   const storeProducts = selectedStore ? PRODUCTS.filter((product) => product.storeId === selectedStore.id) : [];
 
-  const handlePayment = () => {
+  const handlePayment = async () => {
     if (cart.length === 0) {
       setPaymentFeedback({ type: 'error', message: 'Keranjang masih kosong. Tambahkan menu terlebih dahulu.' });
       return;
@@ -615,24 +633,50 @@ export default function App() {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(SESSION_KEY);
   });
+  const [loggedInUserId, setLoggedInUserId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem(SESSION_USER_ID_KEY);
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    getCurrentUser().then((user) => {
+      if (user?.email) {
+        setLoggedInUser(user.email);
+        setLoggedInUserId(user.id);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(SESSION_KEY, user.email);
+          window.localStorage.setItem(SESSION_USER_ID_KEY, user.id);
+        }
+      }
+    });
+  }, []);
 
   const updateField = (field: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
     if (message) setMessage(null);
   };
 
-  const handleLoginSuccess = (email: string) => {
+  const handleLoginSuccess = (email: string, id: string) => {
     setLoggedInUser(email);
+    setLoggedInUserId(id);
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(SESSION_KEY, email);
+      window.localStorage.setItem(SESSION_USER_ID_KEY, id);
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch {
+      // ignore
+    }
     setLoggedInUser(null);
+    setLoggedInUserId(null);
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(SESSION_KEY);
+      window.localStorage.removeItem(SESSION_USER_ID_KEY);
     }
   };
 
@@ -651,37 +695,43 @@ export default function App() {
         return;
       }
 
-      const result = await registerUser(email, password);
+      try {
+        const result = await registerUser({
+          name: form.name.trim() || email.split('@')[0],
+          email,
+          password,
+        });
 
-      if (!result.ok) {
-        setMessage({ type: 'error', text: result.error.message });
+        setMessage({
+          type: 'success',
+          text: `Pendaftaran berhasil untuk ${result.email}. Jika verifikasi email aktif di Supabase, silakan cek inbox email Anda, atau langsung coba login.`
+        });
+        setForm({ ...emptyForm });
+        setMode('login');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Pendaftaran gagal.';
+        setMessage({ type: 'error', text: msg });
+      } finally {
         setIsSubmitting(false);
-        return;
       }
+      return;
+    }
 
-      setMessage({ type: 'success', text: `Pendaftaran berhasil untuk ${result.data.email}. Silakan login.` });
+    try {
+      const result = await loginUser(email, password);
+      handleLoginSuccess(result.email, result.id);
+      setMessage({ type: 'success', text: `Login berhasil. Selamat datang, ${result.email}.` });
       setForm({ ...emptyForm });
-      setMode('login');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login gagal. Periksa kembali email dan password Anda.';
+      setMessage({ type: 'error', text: msg });
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    const result = await loginUser(email, password);
-
-    if (!result.ok) {
-      setMessage({ type: 'error', text: result.error.message });
-      setIsSubmitting(false);
-      return;
-    }
-
-    handleLoginSuccess(result.data.email);
-    setMessage({ type: 'success', text: `Login berhasil. Selamat datang, ${result.data.email}.` });
-    setForm({ ...emptyForm });
-    setIsSubmitting(false);
   };
 
   if (loggedInUser) {
-    return <MainKantinApp userEmail={loggedInUser} onLogout={handleLogout} />;
+    return <MainKantinApp userEmail={loggedInUser} userId={loggedInUserId} onLogout={handleLogout} />;
   }
 
   return (
@@ -706,18 +756,31 @@ export default function App() {
 
         <div className="auth-note">
           {mode === 'register'
-            ? 'Akun harus didaftarkan terlebih dahulu sebelum bisa login.'
-            : 'Jika belum punya akun, silakan register dulu.'}
+            ? 'Daftarkan akun Anda ke database Supabase.'
+            : 'Masuk dengan email dan password yang telah didaftarkan.'}
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
+          {mode === 'register' && (
+            <label>
+              Nama Lengkap
+              <input
+                type="text"
+                value={form.name}
+                onChange={updateField('name')}
+                placeholder="Masukkan nama Anda"
+                required
+              />
+            </label>
+          )}
+
           <label>
             Email
             <input
               type="email"
               value={form.email}
               onChange={updateField('email')}
-              placeholder="nama@student.pradita.ac.id"
+              placeholder="nama@email.com"
               required
             />
           </label>
@@ -749,7 +812,7 @@ export default function App() {
           {message && <div className={`auth-message ${message.type}`}>{message.text}</div>}
 
           <button type="submit" className="primary-button" disabled={isSubmitting}>
-            {isSubmitting ? 'Memproses...' : mode === 'login' ? 'Login' : 'Register'}
+            {isSubmitting ? 'Memproses ke Supabase...' : mode === 'login' ? 'Login' : 'Register'}
           </button>
         </form>
       </div>

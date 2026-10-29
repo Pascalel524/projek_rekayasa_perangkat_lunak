@@ -9,7 +9,7 @@ import type {
 
 let client: SupabaseClient<Database> | undefined;
 
-function getClient(): SupabaseClient<Database> {
+export function getClient(): SupabaseClient<Database> {
   if (client) {
     return client;
   }
@@ -27,15 +27,13 @@ function getClient(): SupabaseClient<Database> {
 }
 
 export async function registerUser(userData: RegisterUserData): Promise<UserIdentity> {
-  if (!userData.name.trim()) {
-    throw new Error('Nama wajib diisi.');
-  }
+  const name = userData.name?.trim() || userData.email.split('@')[0];
 
   const { data, error } = await getClient().auth.signUp({
     email: userData.email.trim().toLowerCase(),
     password: userData.password,
     options: {
-      data: { name: userData.name.trim() },
+      data: { name },
     },
   });
 
@@ -65,6 +63,25 @@ export async function loginUser(email: string, password: string): Promise<UserId
   }
 
   return { id: data.user.id, email: data.user.email };
+}
+
+export async function logoutUser(): Promise<void> {
+  const { error } = await getClient().auth.signOut();
+  if (error) {
+    console.error('Logout error:', error.message);
+  }
+}
+
+export async function getCurrentUser(): Promise<UserIdentity | null> {
+  try {
+    const { data, error } = await getClient().auth.getUser();
+    if (error || !data.user?.email) {
+      return null;
+    }
+    return { id: data.user.id, email: data.user.email };
+  } catch {
+    return null;
+  }
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile> {

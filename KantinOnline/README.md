@@ -1,71 +1,97 @@
-# KantinOnline — Panduan Menjalankan Aplikasi (Frontend)
+# 🍽️ KantinOnline — Panduan Frontend & Instalasi
 
-Panduan singkat untuk menjalankan aplikasi KantinOnline yang berada di folder `KantinOnline` dalam repo ini.
+Panduan instalasi, pengujian, build, dan akses demo aplikasi **KantinOnline**.
 
-Persyaratan
-- Node.js v22+ dan npm atau pnpm/yarn (Supabase JavaScript client memerlukan Node.js 22+)
-- Koneksi internet untuk mengunduh dependensi
+---
 
-Langkah menjalankan (pengembangan)
-1. Buka terminal dan masuk ke folder aplikasi:
-   cd /path/to/repo/projek_rekayasa_perangkat_lunak/KantinOnline
+## 🔗 Akses Aplikasi & Paket Demo
 
-2. Pasang dependensi:
-   npm install
+* **Video Demo Aplikasi**: [Tonton Video Demo di Google Drive](https://drive.google.com/file/d/19YmwKQjIiMbJOoItYrynu9cLeExRWyjk/view?usp=sharing)
+* **Demo Deployment**: Tersedia melalui Vercel / Render Static Site.
 
-3. Jalankan development server:
-   npm run dev
+---
 
-4. Buka aplikasi di browser:
-   http://localhost:5173
+## 🚀 Panduan Instalasi Ulang dari FRESH CLONE
 
-Perintah berguna
-- npm run dev       -> Jalankan server dev (Vite)
-- npm run build     -> Bangun berkas produksi ke folder `dist`
-- npm run preview   -> Preview hasil build (Vite preview)
-- npm run typecheck -> Jalankan TypeScript type check (npx tsc --noEmit)
+### 1. Klon Repositori
+```bash
+git clone https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak.git
+cd projek_rekayasa_perangkat_lunak/KantinOnline
+```
 
-Konfigurasi database Supabase
-1. Salin `.env.example` menjadi `.env.local`, lalu isi URL project dan publishable/anon key dari pengaturan API Supabase.
-2. Jalankan isi `supabase/schema.sql` pada SQL Editor project Supabase untuk membuat tabel, trigger profil, kebijakan RLS, dan fungsi transaksi.
-3. Jangan pernah menaruh `service_role` key di aplikasi frontend. Password akun dikelola Supabase Auth dan tidak disimpan di tabel `users`.
-4. Modul layanan database tersedia di `src/services/db.ts`. Alur UI yang ada belum dialihkan dari penyimpanan lokal.
+### 2. Salin dan Konfigurasikan Environment Variables
+```bash
+cp .env.example .env
+```
+Isi variabel dengan kredensial Supabase Anda:
+```env
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
+```
 
-Panduan build & deploy (statis)
-1. Bangun aplikasi produksi:
-   npm run build
+### 3. Konfigurasi Database Supabase
+1. Jalankan script `supabase/schema.sql` pada menu **SQL Editor** di dashboard Supabase.
+2. Script ini secara otomatis mengonfigurasi tabel `users`, `products`, `transactions`, `transaction_items`, trigger sinkronisasi profil, Row Level Security (RLS), dan stored procedure verifikasi transaksi `save_transaction`.
+3. (Opsional untuk testing/demo): Nonaktifkan opsi **Confirm email** pada menu **Authentication** > **Providers** > **Email**.
 
-2. Hasil build ada di `dist/`.
+### 4. Instalasi Dependensi
+```bash
+npm install
+```
 
-3. Deploy pilihan cepat:
-   - Vercel: login ke vercel.com → New Project → pilih repo → Deploy (build command: `npm run build`, output directory: `dist`)
-   - Netlify: drag & drop folder `dist` pada Netlify Dashboard atau hubungkan repo dan set build command/output seperti di atas.
-   - GitHub Pages: gunakan action atau tool yang mengupload isi `dist/` ke gh-pages branch.
+### 5. Menjalankan Unit Test (Vitest)
+```bash
+npm test
+```
+*Status: 5 test suites, 25/25 unit tests passed.*
 
-Troubleshooting umum
-- Error saat npm install: hapus node_modules dan package-lock.json lalu ulangi:
-  rm -rf node_modules package-lock.json
-  npm install
+### 6. Validasi Type Checking
+```bash
+npm run typecheck
+```
 
-- TypeScript error saat menjalankan `npm run dev`:
-  jalankan `npm run typecheck` untuk melihat daftar error, lalu perbaiki file yang tercantum.
+### 7. Menjalankan Development Server Lokal
+```bash
+npm run dev
+```
+Akses aplikasi melalui peramban: `http://localhost:5173`
 
-- Broken import path: pastikan file di dalam `KantinOnline/src` menggunakan impor relatif yang benar.
+### 8. Membangun Paket Produksi (Build)
+```bash
+npm run build
+```
+Hasil kompilasi produksi disimpan di folder `dist/`. Untuk melihat preview hasil build:
+```bash
+npm run preview
+```
 
-Struktur singkat folder KantinOnline
-- KantinOnline/package.json
-- KantinOnline/vite.config.ts
-- KantinOnline/index.html
-- KantinOnline/src/
-  - components/
-  - App.tsx
-  - main.tsx
-  - data.ts
-  - types.ts
-  - styles.css
+---
 
-Cadangan
-- Folder `src/` (root repository) masih ada sebagai cadangan. Versi aplikasi yang aktif ada di `KantinOnline/`.
+## 🌐 Panduan Deploy ke Cloud
 
-Bantuan lebih lanjut
-- Jika Anda menemui error saat menjalankan perintah di atas, salin pesan error dan kirimkan di sini — saya bantu perbaiki langkah demi langkah.
+### A. Vercel (Rekomendasi)
+* **Framework Preset**: `Vite`
+* **Root Directory**: `KantinOnline`
+* **Build Command**: `vite build`
+* **Output Directory**: `dist`
+* **Environment Variables**: Masukkan `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`.
+
+### B. Render (Static Site)
+* **Branch**: `main`
+* **Root Directory**: `KantinOnline`
+* **Build Command**: `npm install && npm run build`
+* **Publish Directory**: `dist`
+* **Environment Variables**: Masukkan `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`.
+
+---
+
+## 🧪 Status Pengujian Unit Test
+
+| Test Suite | Fokus Pengujian | Status |
+| :--- | :--- | :---: |
+| `src/cart.test.ts` | Tambah item, gabung qty, pencegahan qty negatif, kalkulasi total | ✅ Passed (5/5) |
+| `src/order.test.ts` | Validasi order, status transisi pesanan, ringkasan belanja | ✅ Passed (5/5) |
+| `src/catalog.test.ts` | Filter kategori toko, pencarian produk & toko | ✅ Passed (5/5) |
+| `src/auth.test.ts` | Validasi domain email `@student.pradita.ac.id`, proteksi password | ✅ Passed (5/5) |
+| `src/payment.test.ts` | Validasi uang pas, kembalian, format mata uang Rupiah | ✅ Passed (5/5) |
+| `tsc --noEmit` | Strict type checking seluruh modul TypeScript | ✅ 0 Errors |

@@ -9,6 +9,16 @@ import type {
 
 let client: SupabaseClient<Database> | undefined;
 
+export function isSupabaseConfigured(): boolean {
+  const { VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY } = import.meta.env;
+  return Boolean(
+    VITE_SUPABASE_URL &&
+    VITE_SUPABASE_ANON_KEY &&
+    !VITE_SUPABASE_URL.includes('your-project-id') &&
+    !VITE_SUPABASE_ANON_KEY.includes('your-supabase-')
+  );
+}
+
 export function getClient(): SupabaseClient<Database> {
   if (client) {
     return client;
@@ -16,9 +26,9 @@ export function getClient(): SupabaseClient<Database> {
 
   const { VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY } = import.meta.env;
 
-  if (!VITE_SUPABASE_URL || !VITE_SUPABASE_ANON_KEY) {
+  if (!isSupabaseConfigured()) {
     throw new Error(
-      'Konfigurasi Supabase belum tersedia. Isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY.',
+      'Konfigurasi Supabase belum tersedia atau tidak lengkap. Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY sudah diisi dengan benar.',
     );
   }
 
@@ -66,13 +76,23 @@ export async function loginUser(email: string, password: string): Promise<UserId
 }
 
 export async function logoutUser(): Promise<void> {
-  const { error } = await getClient().auth.signOut();
-  if (error) {
-    console.error('Logout error:', error.message);
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+  try {
+    const { error } = await getClient().auth.signOut();
+    if (error) {
+      console.warn('Logout error:', error.message);
+    }
+  } catch (err) {
+    console.warn('Logout catch error:', err);
   }
 }
 
 export async function getCurrentUser(): Promise<UserIdentity | null> {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
   try {
     const { data, error } = await getClient().auth.getUser();
     if (error || !data.user?.email) {

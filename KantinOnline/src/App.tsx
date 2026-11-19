@@ -4,7 +4,8 @@ import {
   registerUser,
   logoutUser,
   getCurrentUser,
-  getClient
+  getClient,
+  isSupabaseConfigured
 } from './services/db';
 import { formatRupiah } from './payment';
 
@@ -17,7 +18,7 @@ type FormState = {
   confirmPassword: string;
 };
 
-type Store = {
+export type Store = {
   id: string;
   name: string;
   category: string;
@@ -31,7 +32,7 @@ type Store = {
   qrisNmid: string;
 };
 
-type Product = {
+export type Product = {
   id: string;
   storeId: string;
   name: string;
@@ -39,7 +40,7 @@ type Product = {
   description?: string;
 };
 
-type CartItem = {
+export type CartItem = {
   productId: string;
   productName: string;
   storeId: string;
@@ -48,7 +49,7 @@ type CartItem = {
   qty: number;
 };
 
-type PaymentHistoryItem = {
+export type PaymentHistoryItem = {
   id: string;
   createdAt: string;
   total: number;
@@ -70,9 +71,8 @@ const emptyForm: FormState = {
 
 const SESSION_KEY = 'kantinonline_session';
 const SESSION_USER_ID_KEY = 'kantinonline_user_id';
-const PAYMENT_HISTORY_KEY = 'kantinonline_payment_history';
 
-const STORES: Store[] = [
+export const STORES: Store[] = [
   {
     id: 'store-1',
     name: 'Stand Kebab & Burger Middle East',
@@ -153,7 +153,7 @@ const STORES: Store[] = [
   },
 ];
 
-const PRODUCTS: Product[] = [
+export const PRODUCTS: Product[] = [
   { id: 'p-1', storeId: 'store-1', name: 'Kebab Original Beef (Large)', price: 15000, description: 'Kebab daging sapi panggang' },
   { id: 'p-2', storeId: 'store-1', name: 'Kebab Keju Mozzarella', price: 18000 },
   { id: 'p-3', storeId: 'store-1', name: 'Double Beef Burger', price: 22000 },
@@ -169,11 +169,40 @@ const PRODUCTS: Product[] = [
   { id: 'p-13', storeId: 'store-6', name: 'Mie Ayam Komplit', price: 16000 },
 ];
 
-function readPaymentHistory(): PaymentHistoryItem[] {
-  if (typeof window === 'undefined') return [];
+/**
+ * Normalisasi nomor WhatsApp ke standar internasional 628...
+ */
+export function sanitizeWhatsAppNumber(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('0')) {
+    return '62' + digits.slice(1);
+  }
+  if (digits.startsWith('62')) {
+    return digits;
+  }
+  return '62' + digits;
+}
 
+/**
+ * Generator ID Transaksi yang unik dan bebas bentrok (collision-free)
+ */
+export function generateOrderId(storeId: string): string {
+  const storeCode = storeId.replace('store-', 'ST');
+  const timePart = Date.now().toString(36).toUpperCase();
+  const randPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `KNT-${storeCode}-${timePart}-${randPart}`;
+}
+
+export function getPaymentHistoryKey(userId: string | null, userEmail: string | null): string {
+  const safeId = userId || (userEmail ? userEmail.replace(/[^a-zA-Z0-9]/g, '_') : 'guest');
+  return `kantinonline_payment_history_${safeId}`;
+}
+
+export function readPaymentHistory(userId: string | null, userEmail: string | null): PaymentHistoryItem[] {
+  if (typeof window === 'undefined') return [];
   try {
-    const raw = window.localStorage.getItem(PAYMENT_HISTORY_KEY);
+    const key = getPaymentHistoryKey(userId, userEmail);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -182,7 +211,7 @@ function readPaymentHistory(): PaymentHistoryItem[] {
   }
 }
 
-function formatWhatsAppMessage(order: PaymentHistoryItem, userEmail: string | null): string {
+export function formatWhatsAppMessage(order: PaymentHistoryItem, userEmail: string | null): string {
   const dateFormatted = new Date(order.createdAt).toLocaleString('id-ID', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -212,9 +241,10 @@ ${itemList}
 Mohon pesanan segera diproses ya. Terima kasih banyak! 🙏`;
 }
 
-function openWhatsApp(order: PaymentHistoryItem, userEmail: string | null) {
+export function openWhatsApp(order: PaymentHistoryItem, userEmail: string | null) {
   const message = formatWhatsAppMessage(order, userEmail);
-  const waUrl = `https://wa.me/${order.storePhone}?text=${encodeURIComponent(message)}`;
+  const cleanPhone = sanitizeWhatsAppNumber(order.storePhone);
+  const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
   window.open(waUrl, '_blank');
 }
 
@@ -264,7 +294,6 @@ function QuantityAdder({ onAdd }: { onAdd: (qty: number) => void }) {
 }
 
 function QrisVisual({ storeName }: { storeName: string }) {
-  // Generate distinct center initials
   const initials = storeName
     .split(' ')
     .filter((w) => !['&', 'Stand', 'Kedai', 'Dapur'].includes(w))
@@ -343,7 +372,11 @@ function MainKantinApp({
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [cartDrafts, setCartDrafts] = useState<Record<string, string>>({});
   const [successPopup, setSuccessPopup] = useState<string | null>(null);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>(() => readPaymentHistory());
+
+  // Scoped payment history per-user
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>(() =>
+    readPaymentHistory(userId, userEmail)
+  );
 
   // Per-store payment modal state
   const [payingStore, setPayingStore] = useState<{
@@ -353,23 +386,83 @@ function MainKantinApp({
   } | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  // Dynamic QRIS countdown timer (900 detik / 15 menit)
+  const [qrisTimeLeft, setQrisTimeLeft] = useState<number>(900);
+
   // Completed receipt modal state with direct WhatsApp button
   const [receiptModal, setReceiptModal] = useState<PaymentHistoryItem | null>(null);
 
   const categories = ['Semua', ...Array.from(new Set(STORES.map((store) => store.category)))];
 
+  // Refresh scoped payment history whenever user changes
+  useEffect(() => {
+    setPaymentHistory(readPaymentHistory(userId, userEmail));
+  }, [userId, userEmail]);
+
+  // Persist scoped payment history
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      window.localStorage.setItem(PAYMENT_HISTORY_KEY, JSON.stringify(paymentHistory));
+      const key = getPaymentHistoryKey(userId, userEmail);
+      window.localStorage.setItem(key, JSON.stringify(paymentHistory));
     }
-  }, [paymentHistory]);
+  }, [paymentHistory, userId, userEmail]);
 
+  // Toast timer cleanup
   useEffect(() => {
     if (!successPopup) return;
-
     const timer = window.setTimeout(() => setSuccessPopup(null), 3500);
     return () => window.clearTimeout(timer);
   }, [successPopup]);
+
+  // Dynamic QRIS countdown timer logic
+  useEffect(() => {
+    if (!payingStore) {
+      setQrisTimeLeft(900);
+      return;
+    }
+    setQrisTimeLeft(900);
+    const interval = window.setInterval(() => {
+      setQrisTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [payingStore]);
+
+  // Modal accessibility: Escape key listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (payingStore) setPayingStore(null);
+        if (receiptModal) setReceiptModal(null);
+        if (cartVisible) setCartVisible(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [payingStore, receiptModal, cartVisible]);
+
+  // Modal accessibility: Body background scroll lock
+  useEffect(() => {
+    if (payingStore || receiptModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [payingStore, receiptModal]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
 
   const filteredStores = useMemo(() => {
     return STORES.filter((store) => {
@@ -476,18 +569,32 @@ function MainKantinApp({
     setIsProcessingPayment(true);
 
     const { store, items, total } = payingStore;
-    const orderId = `KNT-${store.id.replace('store-', 'ST')}-${Date.now().toString().slice(-5)}`;
+    const orderId = generateOrderId(store.id);
 
-    // Catat ke Supabase jika ada user terautentikasi
+    // Catat ke Supabase jika ada user terautentikasi dan Supabase terkonfigurasi
     try {
-      if (userId) {
+      if (userId && isSupabaseConfigured()) {
         const client = getClient();
-        await client.from('transactions').insert({
-          user_id: userId,
-          total_price: total,
-          payment_method: 'QRIS',
-          payment_status: 'SUCCESS'
-        });
+        const { data: insertedTx, error: txError } = await client
+          .from('transactions')
+          .insert({
+            user_id: userId,
+            total_price: total,
+            payment_method: 'QRIS',
+            payment_status: 'SUCCESS'
+          })
+          .select('id')
+          .single();
+
+        if (insertedTx && !txError) {
+          const itemInserts = items.map((it) => ({
+            transaction_id: insertedTx.id,
+            product_id: it.productId,
+            quantity: it.qty,
+            price: it.unitPrice
+          }));
+          await client.from('transaction_items').insert(itemInserts);
+        }
       }
     } catch (err) {
       console.warn('Gagal mencatat transaksi ke Supabase:', err);
@@ -514,8 +621,15 @@ function MainKantinApp({
     // Update history
     setPaymentHistory((prev) => [transaction, ...prev].slice(0, 15));
 
-    // Hapus hanya item milik toko yang sudah dibayar dari cart
+    // Hapus hanya item milik toko yang sudah dibayar dari cart & bersihkan cartDrafts terkait
     setCart((prev) => prev.filter((item) => item.storeId !== store.id));
+    setCartDrafts((prev) => {
+      const next = { ...prev };
+      items.forEach((it) => {
+        delete next[it.productId];
+      });
+      return next;
+    });
 
     // Tutup modal bayar dan buka modal bukti pembayaran (dengan tombol WhatsApp)
     setPayingStore(null);
@@ -537,13 +651,19 @@ function MainKantinApp({
 
       {/* QRIS PAYMENT MODAL SPESIFIK PER TOKO */}
       {payingStore && (
-        <div className="qris-modal-overlay">
+        <div
+          className="qris-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPayingStore(null);
+          }}
+        >
           <div className="qris-modal-card">
             <div className="qris-top-banner">
               <h3>📱 QRIS {payingStore.store.name}</h3>
               <button
                 onClick={() => setPayingStore(null)}
                 style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}
+                aria-label="Tutup modal QRIS"
               >
                 ✕
               </button>
@@ -556,7 +676,7 @@ function MainKantinApp({
                   Pemilik: <b>{payingStore.store.owner}</b> · {payingStore.store.location}
                 </span>
                 <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                  NMID: {payingStore.store.qrisNmid} · WA: {payingStore.store.phone}
+                  NMID: {payingStore.store.qrisNmid} · WA: +{sanitizeWhatsAppNumber(payingStore.store.phone)}
                 </span>
               </div>
 
@@ -572,8 +692,8 @@ function MainKantinApp({
                 <strong>{formatRupiah(payingStore.total)}</strong>
               </div>
 
-              <div className="qris-timer">
-                ⏱ Batas Waktu Pembayaran: 15:00
+              <div className={`qris-timer ${qrisTimeLeft === 0 ? 'expired' : ''}`}>
+                ⏱ Batas Waktu Pembayaran: {qrisTimeLeft > 0 ? formatTimer(qrisTimeLeft) : 'Waktu Habis (Silakan generate QRIS baru)'}
               </div>
 
               <div className="qris-instruction">
@@ -590,7 +710,7 @@ function MainKantinApp({
                 <button
                   className="btn-confirm-payment"
                   onClick={handleConfirmStorePaymentSuccess}
-                  disabled={isProcessingPayment}
+                  disabled={isProcessingPayment || qrisTimeLeft === 0}
                 >
                   {isProcessingPayment ? 'Memverifikasi Pembayaran...' : '✓ Saya Sudah Membayar'}
                 </button>
@@ -608,13 +728,19 @@ function MainKantinApp({
 
       {/* MODAL BUKTI PEMBAYARAN & KIRIM KE WHATSAPP */}
       {receiptModal && (
-        <div className="qris-modal-overlay">
+        <div
+          className="qris-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setReceiptModal(null);
+          }}
+        >
           <div className="receipt-modal-card">
             <div className="receipt-top-banner">
               <h3>🎉 Pembayaran Berhasil!</h3>
               <button
                 onClick={() => setReceiptModal(null)}
                 style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '20px', cursor: 'pointer' }}
+                aria-label="Tutup bukti pembayaran"
               >
                 ✕
               </button>
@@ -662,7 +788,7 @@ function MainKantinApp({
                 <div>
                   <strong>Kirim Bukti ke WhatsApp Penjual</strong>
                   <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#15803d' }}>
-                    Kirimkan rincian pesanan dan bukti bayar ke nomor WhatsApp <b>{receiptModal.storeOwner}</b> ({receiptModal.storePhone}) agar pesanan langsung disiapkan!
+                    Kirimkan rincian pesanan dan bukti bayar ke nomor WhatsApp <b>{receiptModal.storeOwner}</b> (+{sanitizeWhatsAppNumber(receiptModal.storePhone)}) agar pesanan langsung disiapkan!
                   </p>
                 </div>
               </div>
@@ -1098,6 +1224,7 @@ export default function App() {
   const [mode, setMode] = useState<AuthMode>('register');
   const [form, setForm] = useState<FormState>(emptyForm);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
   const [loggedInUser, setLoggedInUser] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(SESSION_KEY);
@@ -1109,21 +1236,24 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    getCurrentUser().then((user) => {
-      if (user?.email) {
-        setLoggedInUser(user.email);
-        setLoggedInUserId(user.id);
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(SESSION_KEY, user.email);
-          window.localStorage.setItem(SESSION_USER_ID_KEY, user.id);
+    if (isSupabaseConfigured()) {
+      getCurrentUser().then((user) => {
+        if (user?.email) {
+          setLoggedInUser(user.email);
+          setLoggedInUserId(user.id);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(SESSION_KEY, user.email);
+            window.localStorage.setItem(SESSION_USER_ID_KEY, user.id);
+          }
         }
-      }
-    });
+      });
+    }
   }, []);
 
   const updateField = (field: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({ ...current, [field]: event.target.value }));
     if (message) setMessage(null);
+    if (logoutNotice) setLogoutNotice(null);
   };
 
   const handleLoginSuccess = (email: string, id: string) => {
@@ -1147,6 +1277,7 @@ export default function App() {
       window.localStorage.removeItem(SESSION_KEY);
       window.localStorage.removeItem(SESSION_USER_ID_KEY);
     }
+    setLogoutNotice('Anda telah berhasil keluar (Logout). Sampai jumpa kembali!');
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -1165,6 +1296,17 @@ export default function App() {
       }
 
       try {
+        if (!isSupabaseConfigured()) {
+          handleLoginSuccess(email, 'usr_demo_' + Date.now().toString(36));
+          setMessage({
+            type: 'success',
+            text: `Pendaftaran demo berhasil untuk ${email}.`
+          });
+          setForm({ ...emptyForm });
+          setIsSubmitting(false);
+          return;
+        }
+
         const result = await registerUser({
           name: form.name.trim() || email.split('@')[0],
           email,
@@ -1187,6 +1329,14 @@ export default function App() {
     }
 
     try {
+      if (!isSupabaseConfigured()) {
+        handleLoginSuccess(email, 'usr_demo_' + Date.now().toString(36));
+        setMessage({ type: 'success', text: `Login demo berhasil. Selamat datang, ${email}.` });
+        setForm({ ...emptyForm });
+        setIsSubmitting(false);
+        return;
+      }
+
       const result = await loginUser(email, password);
       handleLoginSuccess(result.email, result.id);
       setMessage({ type: 'success', text: `Login berhasil. Selamat datang, ${result.email}.` });
@@ -1200,7 +1350,16 @@ export default function App() {
   };
 
   if (loggedInUser) {
-    return <MainKantinApp userEmail={loggedInUser} userId={loggedInUserId} onLogout={handleLogout} />;
+    return (
+      <>
+        {!isSupabaseConfigured() && (
+          <div className="demo-mode-banner">
+            ℹ️ Mode Standalone Aktif: Konfigurasi Supabase (.env) belum terdeteksi. Fitur transaksi lokal tetap berjalan lancar.
+          </div>
+        )}
+        <MainKantinApp userEmail={loggedInUser} userId={loggedInUserId} onLogout={handleLogout} />
+      </>
+    );
   }
 
   return (
@@ -1213,6 +1372,18 @@ export default function App() {
             <h1>{mode === 'login' ? 'Masuk ke akun' : 'Buat akun baru'}</h1>
           </div>
         </div>
+
+        {!isSupabaseConfigured() && (
+          <div className="demo-mode-banner" style={{ borderRadius: '10px', marginBottom: '14px' }}>
+            ℹ️ Konfigurasi Supabase (.env) belum terpasang. Anda dapat mendaftar dan login untuk mencoba antarmuka aplikasi.
+          </div>
+        )}
+
+        {logoutNotice && (
+          <div className="auth-message success" style={{ marginBottom: '14px' }}>
+            {logoutNotice}
+          </div>
+        )}
 
         <div className="auth-toggle" aria-label="Mode autentikasi">
           <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>

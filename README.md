@@ -6,7 +6,8 @@ Aplikasi Web Pemesanan dan Pembayaran Kantin Kampus Terpadu berbasis **React**, 
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
-[![Vitest](https://img.shields.io/badge/Tests-25%20Passed-brightgreen?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Tests-29%20Passed-brightgreen?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Issues Solved](https://img.shields.io/badge/GitHub%20Issues-10%2F10%20Solved-success?logo=github)](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/16)
 
 ---
 
@@ -14,6 +15,26 @@ Aplikasi Web Pemesanan dan Pembayaran Kantin Kampus Terpadu berbasis **React**, 
 
 * **Video Demo Aplikasi**: [Tonton Video Demo (Google Drive)](https://drive.google.com/file/d/19YmwKQjIiMbJOoItYrynu9cLeExRWyjk/view?usp=sharing)
 * **Demo Deployment**: Tersedia melalui Vercel / Render Static Site.
+* **Laporan Evaluasi Bug Pasca Deploy**: [Master Issue #16 di GitHub](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/16)
+
+---
+
+## 🐛 Evaluasi & Penanganan Bug Pasca Deploy (GitHub Issues)
+
+Seluruh 10 permasalahan/bugs pasca deployment telah didaftarkan dan diselesaikan langsung di GitHub Issues. Reviewer dapat melihat detail issue dan solusinya pada tabel di bawah atau melalui **[Master Issue #16](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/16)**:
+
+| No. | Issue GitHub | Judul Permasalahan / Bug | Kategori | Status Solusi |
+| :---: | :---: | :--- | :---: | :---: |
+| 1 | [#6](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/6) | Single-Page App (SPA) 404 Not Found saat refresh halaman pada Vercel/Render | Deployment | ✅ **Solved & Closed** |
+| 2 | [#7](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/7) | Timer batas waktu pembayaran QRIS statis dan tidak menghitung mundur | UI/UX / Payment | ✅ **Solved & Closed** |
+| 3 | [#8](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/8) | Risiko bentrok Order ID akibat generator ID menggunakan timestamp pendek | Backend / Critical | ✅ **Solved & Closed** |
+| 4 | [#9](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/9) | Riwayat pembayaran di localStorage tidak terisolasi per akun pengguna | Security / Privacy | ✅ **Solved & Closed** |
+| 5 | [#10](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/10) | Rincian menu pesanan tidak tersimpan ke tabel `transaction_items` Supabase | Database / Schema | ✅ **Solved & Closed** |
+| 6 | [#11](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/11) | Tautan WhatsApp gagal terbuka jika nomor telepon toko berawalan "08" | Integration / WA | ✅ **Solved & Closed** |
+| 7 | [#12](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/12) | Unhandled exception fatal saat inisialisasi konfigurasi Supabase (.env) belum lengkap | Robustness / Config | ✅ **Solved & Closed** |
+| 8 | [#13](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/13) | Modal QRIS dan bukti pembayaran tidak dapat ditutup menggunakan tombol Escape | Accessibility / UX | ✅ **Solved & Closed** |
+| 9 | [#14](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/14) | State draft kuantitas (`cartDrafts`) tidak dibersihkan saat item toko dibayar | State Management | ✅ **Solved & Closed** |
+| 10 | [#15](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/15) | Ketiadaan notifikasi umpan balik visual dan pembersihan status saat logout | Auth / UI | ✅ **Solved & Closed** |
 
 ---
 
@@ -57,7 +78,7 @@ Pastikan semua unit test lolos:
 ```bash
 npm test
 ```
-*Hasil: 5 test suites lolos, 25/25 unit tests passed.*
+*Hasil: 6 test suites lolos, 29/29 unit tests passed (100% Passed).*
 
 ### 6. Pengecekan Validasi Tipe (TypeScript)
 ```bash
@@ -94,7 +115,7 @@ npm run preview
 4. Tambahkan **Environment Variables**:
    - `VITE_SUPABASE_URL` = `[URL Supabase Anda]`
    - `VITE_SUPABASE_ANON_KEY` = `[Anon Key Supabase Anda]`
-5. Klik **Deploy**.
+5. Klik **Deploy**. File `vercel.json` sudah tersedia untuk menangani SPA rewrites otomatis.
 
 ### B. Deploy ke Render (Static Site)
 1. Buka [Dashboard Render](https://dashboard.render.com) > **+ New** > **Static Site**.
@@ -114,6 +135,8 @@ npm run preview
 ```text
 projek_rekayasa_perangkat_lunak/
 ├── KantinOnline/                  # Direktori utama kode sumber aplikasi
+│   ├── public/
+│   │   └── _redirects            # Rule redirect SPA untuk Render/Netlify
 │   ├── src/
 │   │   ├── services/
 │   │   │   └── db.ts             # Service Supabase (Auth, Transaksi, Profil)
@@ -124,14 +147,17 @@ projek_rekayasa_perangkat_lunak/
 │   │   ├── catalog.ts & .test.ts  # Filter & pencarian katalog toko
 │   │   ├── order.ts & .test.ts    # Validasi & kalkulasi order
 │   │   ├── payment.ts & .test.ts  # Format mata uang & validasi pembayaran
+│   │   ├── integration.test.ts   # Pengujian integrasi WhatsApp & Order ID
 │   │   └── styles.css            # Desain antarmuka & tema aplikasi
 │   ├── supabase/
 │   │   └── schema.sql            # Skema DDL, RLS, Trigger, & Stored Procedure
+│   ├── vercel.json               # Konfigurasi SPA rewrite Vercel
 │   ├── package.json              # Daftar dependensi & npm scripts
 │   ├── tsconfig.json             # Konfigurasi compiler TypeScript
 │   └── vite.config.ts            # Konfigurasi bundler Vite
 ├── HowToRun.md                   # Panduan operasional tambahan
 ├── link_video                    # Berkas tautan video demo
+├── vercel.json                   # Konfigurasi SPA rewrite root
 └── README.md                     # Dokumentasi utama proyek
 ```
 
@@ -146,5 +172,6 @@ projek_rekayasa_perangkat_lunak/
 | **Katalog & Filter Toko** | `src/catalog.test.ts` | ✅ Passed | 5 |
 | **Autentikasi Pengguna** | `src/auth.test.ts` | ✅ Passed | 5 |
 | **Validasi Pembayaran** | `src/payment.test.ts` | ✅ Passed | 5 |
+| **Integrasi WA & Order ID** | `src/integration.test.ts` | ✅ Passed | 4 |
 | **TypeScript Typecheck** | `tsc --noEmit` | ✅ 0 Errors | - |
-| **Total Unit Tests** | | **✅ 100% Passed** | **25 / 25** |
+| **Total Unit Tests** | | **✅ 100% Passed** | **29 / 29** |

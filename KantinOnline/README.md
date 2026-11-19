@@ -1,6 +1,6 @@
 # 🍽️ KantinOnline — Panduan Frontend & Instalasi
 
-Panduan instalasi, pengujian, build, dan akses demo aplikasi **KantinOnline**.
+Panduan instalasi, pengujian, build, dan evaluasi bug pasca deployment aplikasi **KantinOnline**.
 
 ---
 
@@ -8,6 +8,26 @@ Panduan instalasi, pengujian, build, dan akses demo aplikasi **KantinOnline**.
 
 * **Video Demo Aplikasi**: [Tonton Video Demo di Google Drive](https://drive.google.com/file/d/19YmwKQjIiMbJOoItYrynu9cLeExRWyjk/view?usp=sharing)
 * **Demo Deployment**: Tersedia melalui Vercel / Render Static Site.
+* **Laporan Evaluasi Bug Pasca Deploy**: [Master Issue #16 di GitHub](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/16)
+
+---
+
+## 🐛 Evaluasi & Penanganan Bug Pasca Deploy (GitHub Issues)
+
+Seluruh 10 permasalahan/bugs pasca deployment telah didaftarkan dan diselesaikan langsung di GitHub Issues. Reviewer dapat melihat detail issue dan solusinya pada tabel di bawah atau melalui **[Master Issue #16](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/16)**:
+
+| No. | Issue GitHub | Judul Permasalahan / Bug | Kategori | Status Solusi |
+| :---: | :---: | :--- | :---: | :---: |
+| 1 | [#6](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/6) | Single-Page App (SPA) 404 Not Found saat refresh halaman pada Vercel/Render | Deployment | ✅ **Solved & Closed** |
+| 2 | [#7](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/7) | Timer batas waktu pembayaran QRIS statis dan tidak menghitung mundur | UI/UX / Payment | ✅ **Solved & Closed** |
+| 3 | [#8](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/8) | Risiko bentrok Order ID akibat generator ID menggunakan timestamp pendek | Backend / Critical | ✅ **Solved & Closed** |
+| 4 | [#9](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/9) | Riwayat pembayaran di localStorage tidak terisolasi per akun pengguna | Security / Privacy | ✅ **Solved & Closed** |
+| 5 | [#10](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/10) | Rincian menu pesanan tidak tersimpan ke tabel `transaction_items` Supabase | Database / Schema | ✅ **Solved & Closed** |
+| 6 | [#11](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/11) | Tautan WhatsApp gagal terbuka jika nomor telepon toko berawalan "08" | Integration / WA | ✅ **Solved & Closed** |
+| 7 | [#12](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/12) | Unhandled exception fatal saat inisialisasi konfigurasi Supabase (.env) belum lengkap | Robustness / Config | ✅ **Solved & Closed** |
+| 8 | [#13](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/13) | Modal QRIS dan bukti pembayaran tidak dapat ditutup menggunakan tombol Escape | Accessibility / UX | ✅ **Solved & Closed** |
+| 9 | [#14](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/14) | State draft kuantitas (`cartDrafts`) tidak dibersihkan saat item toko dibayar | State Management | ✅ **Solved & Closed** |
+| 10 | [#15](https://github.com/Pascalel524/projek_rekayasa_perangkat_lunak/issues/15) | Ketiadaan notifikasi umpan balik visual dan pembersihan status saat logout | Auth / UI | ✅ **Solved & Closed** |
 
 ---
 
@@ -43,7 +63,7 @@ npm install
 ```bash
 npm test
 ```
-*Status: 5 test suites, 25/25 unit tests passed.*
+*Status: 6 test suites, 29/29 unit tests passed.*
 
 ### 6. Validasi Type Checking
 ```bash
@@ -94,4 +114,5 @@ npm run preview
 | `src/catalog.test.ts` | Filter kategori toko, pencarian produk & toko | ✅ Passed (5/5) |
 | `src/auth.test.ts` | Validasi domain email `@student.pradita.ac.id`, proteksi password | ✅ Passed (5/5) |
 | `src/payment.test.ts` | Validasi uang pas, kembalian, format mata uang Rupiah | ✅ Passed (5/5) |
+| `src/integration.test.ts` | Sanitasi nomor WhatsApp toko & Generator Order ID unik | ✅ Passed (4/4) |
 | `tsc --noEmit` | Strict type checking seluruh modul TypeScript | ✅ 0 Errors |

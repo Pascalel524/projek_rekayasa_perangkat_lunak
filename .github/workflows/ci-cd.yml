@@ -1,0 +1,108 @@
+name: KantinOnline CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - v1.0
+      - v1.0_dev
+      - v1.1
+      - main
+  pull_request:
+    branches:
+      - v1.0
+      - v1.1
+      - main
+
+defaults:
+  run:
+    working-directory: KantinOnline
+
+jobs:
+  unit-test:
+    name: 1. Unit Test & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: KantinOnline/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Run Vitest unit tests
+        run: npm test
+
+  build:
+    name: 2. Auto Build (Vite)
+    needs: unit-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: KantinOnline/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kantinonline-dist-${{ github.ref_name }}
+          path: KantinOnline/dist
+          retention-days: 7
+
+  deploy:
+    name: 3. Deploy to Vercel (Live)
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy Production to Vercel (v1.0 / v1.1 / main)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' && (github.ref_name == 'v1.1' || github.ref_name == 'v1.0' || github.ref_name == 'main') }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel@latest
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Preview to Vercel (v1.0_dev)
+        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' && github.ref_name == 'v1.0_dev' }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel@latest
+          vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+          vercel build --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deployment Status Notice (Vercel Secrets Not Configured)
+        if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
+        run: |
+          echo "Unit Test & Build PASSED (Hijau) on branch ${{ github.ref_name }}."
+          echo "To enable CLI auto-deploy from GitHub Actions, add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID to GitHub Secrets."
+          echo "If Vercel GitHub Integration is already connected, Vercel will auto-deploy this commit."

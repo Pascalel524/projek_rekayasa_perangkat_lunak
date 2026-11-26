@@ -10,6 +10,15 @@ export function validatePaymentAmount(
   total: number,
   paidAmount: string | number
 ): { ok: boolean; paid: number; change: number; message: string } {
+  if (!Number.isFinite(total) || total <= 0) {
+    return {
+      ok: false,
+      paid: 0,
+      change: 0,
+      message: 'Total pembayaran tidak valid.',
+    };
+  }
+
   const raw =
     typeof paidAmount === 'string'
       ? paidAmount.replace(/\./g, '').replace(/[^0-9-]/g, '')

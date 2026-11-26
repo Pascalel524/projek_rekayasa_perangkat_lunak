@@ -5,18 +5,24 @@ export type CartItem = {
   qty: number;
 };
 
+function normalizeQty(qty: number, min: number): number {
+  if (!Number.isFinite(qty)) return min;
+  return Math.max(min, Math.floor(qty));
+}
+
 export function addItemToCart(cart: CartItem[], item: CartItem) {
+  const safeQty = normalizeQty(item.qty, 1);
   const existing = cart.find((entry) => entry.productId === item.productId);
-  if (!existing) return [...cart, { ...item, qty: Math.max(1, item.qty) }];
+  if (!existing) return [...cart, { ...item, qty: safeQty }];
   return cart.map((entry) =>
     entry.productId === item.productId
-      ? { ...entry, qty: entry.qty + Math.max(1, item.qty) }
+      ? { ...entry, qty: entry.qty + safeQty }
       : entry
   );
 }
 
 export function updateCartQty(cart: CartItem[], productId: string, qty: number) {
-  const nextQty = Math.max(0, qty);
+  const nextQty = normalizeQty(qty, 0);
   return cart.map((entry) =>
     entry.productId === productId ? { ...entry, qty: nextQty } : entry
   );

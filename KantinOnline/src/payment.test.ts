@@ -40,4 +40,9 @@ describe('Payment business rules', () => {
     expect(formatRupiah(15000)).toBe('Rp 15.000');
     expect(formatRupiah(50000)).toBe('Rp 50.000');
   });
+
+  it('menolak pembayaran jika total belanja tidak valid (<= 0 atau NaN)', () => {
+    expect(validatePaymentAmount(0, '15000').ok).toBe(false);
+    expect(validatePaymentAmount(Number.NaN, '15000').ok).toBe(false);
+  });
 });

@@ -50,4 +50,23 @@ describe('Cart business rules', () => {
     expect(cart).toHaveLength(1);
     expect(cart[0].productId).toBe('p2');
   });
+
+  it('mencegah qty NaN atau desimal merusak kalkulasi total keranjang', () => {
+    const added = addItemToCart([], {
+      productId: 'p1',
+      productName: 'Kebab',
+      unitPrice: 15000,
+      qty: Number.NaN,
+    });
+    expect(added[0].qty).toBe(1);
+    expect(getCartTotal(added)).toBe(15000);
+
+    const updated = updateCartQty(added, 'p1', Number.NaN);
+    expect(updated[0].qty).toBe(0);
+    expect(getCartTotal(updated)).toBe(0);
+
+    const floored = updateCartQty(added, 'p1', 2.8);
+    expect(floored[0].qty).toBe(2);
+    expect(getCartTotal(floored)).toBe(30000);
+  });
 });

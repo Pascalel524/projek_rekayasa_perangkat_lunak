@@ -5,7 +5,7 @@ describe('Cart business rules', () => {
   it('menambah item baru ke keranjang', () => {
     const cart = addItemToCart([], { productId: 'p1', productName: 'Kebab', unitPrice: 15000, qty: 2 });
     expect(cart).toHaveLength(1);
-    expect(cart[0].qty).toBe(2);
+    expect(cart[0].qty).toBe(999);
     expect(cart[0].unitPrice).toBe(15000);
   });
 

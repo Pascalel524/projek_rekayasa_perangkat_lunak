@@ -78,31 +78,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Deploy Production to Vercel (v1.0 / v1.1 / main)
-        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' && (github.ref_name == 'v1.1' || github.ref_name == 'v1.0' || github.ref_name == 'main') }}
+      - name: Deploy to Vercel
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          npm install -g vercel@latest
-          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy Preview to Vercel (v1.0_dev)
-        if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID != '' && github.ref_name == 'v1.0_dev' }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npm install -g vercel@latest
-          vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-          vercel build --token=${{ secrets.VERCEL_TOKEN }}
-          vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deployment Status Notice (Vercel Secrets Not Configured)
-        if: ${{ secrets.VERCEL_TOKEN == '' || secrets.VERCEL_ORG_ID == '' || secrets.VERCEL_PROJECT_ID == '' }}
-        run: |
-          echo "Unit Test & Build PASSED (Hijau) on branch ${{ github.ref_name }}."
-          echo "To enable CLI auto-deploy from GitHub Actions, add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID to GitHub Secrets."
-          echo "If Vercel GitHub Integration is already connected, Vercel will auto-deploy this commit."
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            npm install -g vercel@latest
+            if [ "${{ github.ref_name }}" = "v1.0_dev" ]; then
+              vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+              vercel build --token="$VERCEL_TOKEN"
+              vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+            else
+              vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+              vercel build --prod --token="$VERCEL_TOKEN"
+              vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+            fi
+          else
+            echo "Unit Test & Build PASSED (Hijau) on branch ${{ github.ref_name }}."
+            echo "To enable CLI auto-deploy from GitHub Actions, add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID to GitHub Secrets."
+            echo "If Vercel GitHub Integration is already connected, Vercel will auto-deploy this commit."
+          fi
